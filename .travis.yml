@@ -16,7 +16,7 @@ matrix:
       services:
         - docker
       env:
-        - DOCKER_OS=ubuntu:14.04;ubuntu:16.04;ubuntu:latest
+        - DOCKER_OS="ubuntu:14.04;ubuntu:16.04;ubuntu:latest"
     - os: osx
       osx_image: xcode7.3
       env:
