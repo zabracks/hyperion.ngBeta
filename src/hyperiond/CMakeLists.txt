@@ -18,6 +18,7 @@ target_link_libraries(hyperiond
 		protoserver
 		webconfig
 		bonjour
+		plugin
 )
 
 if (ENABLE_DISPMANX)

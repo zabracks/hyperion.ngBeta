@@ -51,6 +51,7 @@ HyperionDaemon::HyperionDaemon(QString configFile, QObject *parent)
 	, _osxGrabber(nullptr)
 	, _hyperion(nullptr)
 	, _stats(nullptr)
+	, _plugins(nullptr)
 {
 	loadConfig(configFile);
 
@@ -102,6 +103,7 @@ void HyperionDaemon::freeObjects()
 	delete _boblightServer;
 	delete _udpListener;
 	delete _stats;
+	delete _plugins;
 
 	_v4l2Grabbers.clear();
 	_amlGrabber     = nullptr;
@@ -114,6 +116,7 @@ void HyperionDaemon::freeObjects()
 	_boblightServer = nullptr;
 	_udpListener    = nullptr;
 	_stats          = nullptr;
+	_plugins        = nullptr;
 }
 
 void HyperionDaemon::run()
@@ -292,6 +295,9 @@ void HyperionDaemon::startNetworkServices()
 	// Create Stats
 	_stats = new Stats();
 
+	// Create Plugin
+	_plugins = new Plugin();
+
 	// Create Json server if configuration is present
 	unsigned int jsonPort = 19444;
 	if (_qconfig.contains("jsonServer"))
@@ -409,7 +415,7 @@ void HyperionDaemon::createSystemFrameGrabber()
 			#else
 				QString type = grabberConfig["type"].toString("auto");
 			#endif
-			
+
 			// auto eval of type
 			if ( type == "auto" )
 			{

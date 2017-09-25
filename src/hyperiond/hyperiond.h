@@ -47,7 +47,7 @@
 #include <boblightserver/BoblightServer.h>
 #include <udplistener/UDPListener.h>
 #include <utils/Stats.h>
-
+#include <plugin/Plugin.h>
 
 class SysTray;
 
@@ -95,11 +95,12 @@ private:
 	X11Wrapper*         _x11Grabber;
 #endif
 	AmlogicWrapper*     _amlGrabber;
-	FramebufferWrapper* _fbGrabber; 
+	FramebufferWrapper* _fbGrabber;
 	OsxWrapper*         _osxGrabber;
 	Hyperion*           _hyperion;
 	Stats*              _stats;
-	
+	Plugin*             _plugins;
+
 	unsigned            _grabber_width;
 	unsigned            _grabber_height;
 	unsigned            _grabber_frequency;
