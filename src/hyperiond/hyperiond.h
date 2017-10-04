@@ -99,10 +99,7 @@ private:
 	OsxWrapper*         _osxGrabber;
 	Hyperion*           _hyperion;
 	Stats*              _stats;
-<<<<<<< HEAD
 	Plugin*             _plugins;
-=======
->>>>>>> crefactor
 
 	unsigned            _grabber_width;
 	unsigned            _grabber_height;

@@ -7,7 +7,8 @@
 Plugin::Plugin()
 	: QObject()
 	, _log(Logger::getInstance("PLUGINS"))
-	, _files(_log)
+	, _hyperion(Hyperion::getInstance())
+	, _files(_log, _hyperion->getRootPath())
 {
 
 }

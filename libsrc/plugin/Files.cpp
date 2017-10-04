@@ -1,19 +1,21 @@
 // project include
 #include <plugin/Files.h>
 #include <utils/JsonUtils.h>
-
+#include <plugin/HTTPUtils.h>
 // qt includes
 #include <QDir>
 #include <QJsonObject>
+#include <QTimer>
 #include <QDebug>
 
 
-Files::Files(Logger* log)
+Files::Files(Logger* log, const QString& rootPath)
 	: QObject()
 	, _log(log)
+	, _http(new HTTPUtils(log))
 {
 	// create folder structure
-	_pluginsDir = QDir::homePath() + "/.hyperion/plugins";
+	_pluginsDir = rootPath + "/plugins";
 	_packageDir = _pluginsDir + "/packages";
 	_configDir = _pluginsDir + "/config";
 
@@ -21,24 +23,63 @@ Files::Files(Logger* log)
 	dir.mkpath(_packageDir);
 	dir.mkpath(_configDir);
 
+	// listen for http utils reply
+	connect(_http, &HTTPUtils::replyReceived, this, &Files::replyReceived);
+	updateAvailablePlugins();
 	updateInstalledPlugins();
 }
 
 Files::~Files()
 {
+	delete _http;
+}
+
+void Files::replyReceived(bool success, int type, QString url, QByteArray data)
+{
+	qDebug()<<"REPLY RECIEVED: success,type,url"<<success<<type<<url;
+	if(url == _pUrl && success && type == 2)
+	{
+		// updateAvailablePlugins map
+		QJsonArray arr;
+		if(!JsonUtils::parse(url, QString(data), arr, _log))
+			return;
+
+		for(const auto & e : arr)
+		{
+			//qDebug()<<"Entry of Array:" << e;
+		}
+	}
+}
+
+bool Files::installPlugin(const QString& id)
+{
+return true;
+	// verify the plugin exists
 
 }
+
+bool Files::removePlugin(const QString& id)
+{
+return true;
+}
+
+void Files::updateAvailablePlugins(void)
+{
+	_http->sendGet(_pUrl);
+}
+
 
 void Files::updateInstalledPlugins(void)
 {
 	_installedPlugins.clear();
 	QDir dir(_pluginsDir);
-	QStringList filters("service.*");
+	QStringList filters;
+	filters << "service.*" << "module.*";
 	dir.setNameFilters(filters);
 	QStringList pluginDirs = dir.entryList(QDir::Dirs);
 
 	// iterate through each plugin folder
-	for (const auto pluginDir : pluginDirs)
+	for (const auto & pluginDir : pluginDirs)
 	{
 		// get plugin.json for meta data
 		QString pd(_pluginsDir+"/"+pluginDir);
@@ -60,7 +101,7 @@ void Files::updateInstalledPlugins(void)
 			if(!FileUtils::fileExists(pd+"/service.py",_log))
 				continue;
 
-			// get the settings if available
+			// get settings if available
 			JsonUtils::readFile(_configDir+"/"+id+".json", settingsObj, _log, true);
 
 			// load translations??
@@ -74,7 +115,6 @@ void Files::updateInstalledPlugins(void)
 			metaObj["dependencies"].toArray(),
 			metaObj["changelog"].toArray(),
 			metaObj["provider"].toString(),
-			metaObj["licence"].toString(),
 			metaObj["support"].toString(),
 			metaObj["source"].toString(),
 			pd+"/service.py",

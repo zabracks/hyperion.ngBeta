@@ -2,6 +2,7 @@
 
 #include <utils/Logger.h>
 #include <plugin/Files.h>
+#include <hyperion/Hyperion.h>
 
 #include <QList>
 
@@ -19,13 +20,10 @@ public:
 private:
 	/// Logger instance
 	Logger* _log;
+	/// Hyperion instance
+	Hyperion* _hyperion;
 	/// Files instance
 	Files _files;
-
-	/// plugins, package, config dir
-	QString _pluginsDir;
-	QString _packageDir;
-	QString _configDir;
 
 	/// List of available/enabled plugins
 	//QList _availablePlugins;

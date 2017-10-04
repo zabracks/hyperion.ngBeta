@@ -12,6 +12,7 @@ add_library(plugin
 )
 
 target_link_libraries(plugin
+	hyperion
 	hyperion-utils
 	Qt5::Core
 	${PYTHON_LIBRARIES}

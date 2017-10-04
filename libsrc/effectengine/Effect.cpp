@@ -1,6 +1,5 @@
 // Python include
 #include <Python.h>
-#include <frameobject.h>
 
 // stl includes
 #include <iostream>

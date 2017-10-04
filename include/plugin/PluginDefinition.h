@@ -9,7 +9,6 @@ struct PluginDefinition {
 	QJsonArray      dependencies;
 	QJsonArray      changelog;
 	QString         provider;
-	QString         licence;
 	QString         support;
 	QString         source;
 	QString         entryPy;
