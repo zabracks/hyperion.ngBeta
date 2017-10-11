@@ -1,6 +1,6 @@
 
 # Candleflicker effect by penfold42
-# Algorithm courtesy of 
+# Algorithm courtesy of
 # https://cpldcpu.com/2013/12/08/hacking-a-candleflicker-led/
 
 # candles can be :
@@ -43,7 +43,7 @@ hsv = colorsys.rgb_to_hsv(color[0]/255.0, color[1]/255.0, color [2]/255.0)
 
 
 def CandleRgb():
-	hue = random.uniform(hsv[0]-colorShift, hsv[0]+colorShift) % 1.0
+hue = random.uniform(hsv[0]-colorShift, hsv[0]+colorShift) % 1.0
 
 	RAND=random.randint(0,15)
 	while ((RAND & 0x0c)==0):
@@ -60,22 +60,21 @@ while not hyperion.abort():
 	if (candles == "all-together"):
 		rgb = CandleRgb()
 		for lednum in candlelist:
-			ledData[3*lednum+0] = rgb[0] 
-			ledData[3*lednum+1] = rgb[1] 
-			ledData[3*lednum+2] = rgb[2] 
+			ledData[3*lednum+0] = rgb[0]
+			ledData[3*lednum+1] = rgb[1]
+			ledData[3*lednum+2] = rgb[2]
 	elif (candles == "all"):
 		for lednum in candlelist:
 			rgb = CandleRgb()
-			ledData[3*lednum+0] = rgb[0] 
-			ledData[3*lednum+1] = rgb[1] 
-			ledData[3*lednum+2] = rgb[2] 
+			ledData[3*lednum+0] = rgb[0]
+			ledData[3*lednum+1] = rgb[1]
+			ledData[3*lednum+2] = rgb[2]
 	else:
 		for lednum in candlelist:
 			rgb = CandleRgb()
-			ledData[3*lednum+0] = rgb[0] 
-			ledData[3*lednum+1] = rgb[1] 
-			ledData[3*lednum+2] = rgb[2] 
+			ledData[3*lednum+0] = rgb[0]
+			ledData[3*lednum+1] = rgb[1]
+			ledData[3*lednum+2] = rgb[2]
 
 	hyperion.setColor (ledData)
 	time.sleep(sleepTime)
-

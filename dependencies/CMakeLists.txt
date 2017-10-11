@@ -1,5 +1,6 @@
 add_subdirectory(build/hidapi)
 add_subdirectory(build/tinkerforge)
+add_subdirectory(build/quazip)
 
 if(ENABLE_WS281XPWM)
 	add_library(ws281x

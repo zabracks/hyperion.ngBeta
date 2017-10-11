@@ -347,7 +347,7 @@ void JsonProcessor::handleSysInfoCommand(const QJsonObject&, const QString& comm
 	hyperion["version"         ] = QString(HYPERION_VERSION);
 	hyperion["build"           ] = QString(HYPERION_BUILD_ID);
 	hyperion["time"            ] = QString(__DATE__ " " __TIME__);
-	hyperion["id"              ] = _hyperion->id;
+	hyperion["id"              ] = _hyperion->getId();
 	info["hyperion"] = hyperion;
 
 	// send the result

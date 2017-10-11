@@ -306,7 +306,7 @@ void HyperionDaemon::startNetworkServices()
 	_stats = new Stats();
 
 	// Create Plugin
-	_plugins = new Plugin();
+	_plugins = new Plugins();
 
 	// Create Json server if configuration is present
 	unsigned int jsonPort = 19444;
@@ -376,7 +376,7 @@ void HyperionDaemon::startNetworkServices()
 	const QJsonObject & generalConfig = _qconfig["general"].toObject();
 	const QString mDNSDescr = generalConfig["name"].toString("") + "@" + QHostInfo::localHostName();
 	// txt record for zeroconf
-	QString id = _hyperion->id;
+	QString id = _hyperion->getId();
 	std::string version = HYPERION_VERSION;
 	std::vector<std::pair<std::string, std::string> > txtRecord = {{"id",id.toStdString()},{"version",version}};
 

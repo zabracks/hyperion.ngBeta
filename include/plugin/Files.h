@@ -3,13 +3,11 @@
 #include <utils/Logger.h>
 #include <plugin/PluginDefinition.h>
 
-
-
 // forward decl
 class QTimer;
 class HTTPUtils;
 ///
-/// @brief Handle all file system related tasks and repo sync
+/// @brief Handle all file system related tasks, init downloads and repo sync
 ///
 class Files : public QObject
 {
@@ -20,16 +18,31 @@ public:
 	/// @brief Constructor
 	/// @param[in]  log      The Logger of the caller
 	/// @param[in]  rootPath rootPath of hyperion user data
+	/// @param[in]  id       id of hyperion
 	///
-	Files(Logger* log, const QString& rootPath);
+	Files(Logger* log, const QString& rootPath, const QString& id);
 	~Files();
 
-	bool installPlugin(const QString& id);
-	bool removePlugin(const QString& id);
+	QMap<QString, PluginDefinition> getInstalledPlugins(void){ return _installedPlugins; };
+	QMap<QString, PluginDefinition> getAvailablePlugins(void){ return _availablePlugins; };
+
+	bool getPluginDefinition(const QString& id, PluginDefinition& def);
+
+signals:
+	///
+	/// @brief emits whenever a plugin action is ongoing
+	/// @param action   action from enum
+	/// @param id       plugin id
+	/// @param def      PluginDefinition (optional)
+	/// @param success  true if action was a success, else false
+	///
+	void pluginAction(PluginAction action, QString id, bool success = true, PluginDefinition def = PluginDefinition());
 
 private:
 	/// Logger instance
 	Logger* _log;
+	/// id of hyperion
+	const QString _id;
 	/// HTTP Utils instance
 	HTTPUtils* _http;
 
@@ -38,19 +51,41 @@ private:
 	QString _packageDir;
 	QString _configDir;
 
-	/// available plugins url
-	const QString _pUrl = "https://raw.githubusercontent.com/brindosch/plugins/master/plugins.json";
+	/// repo url
+	const QString _rUrl = "https://raw.githubusercontent.com/brindosch/plugins/master/plugins.json";
+	/// download dir url
+	const QString _dUrl = "https://raw.githubusercontent.com/brindosch/plugins/master/";
 
 	/// List of installed plugins <id,definition>
 	QMap<QString, PluginDefinition> _installedPlugins;
-	/// List of available plugins <id,QJsonObject>
-	QMap<QString, QJsonObject> _availablePlugins;
+	/// List of available plugins <id,definition>
+	QMap<QString, PluginDefinition> _availablePlugins;
 
 	/// Timer to refresh available plugins
 	QTimer* _rTimer;
-private slots:
+
+	/// returs int representation of a version string
+	int getIntV(QString str);
+
+	/// compare installed plugins with available to trigger updates
+	void doUpdateCheck(void);
+
+	/// install or update the given plugin
+	void installPlugin(const QString& id);
+
+	/// Create plugin definition from plugin id, return true on success; push to _installedPlugins
+	bool updateInstalledPlugin(const QString& tid, PluginDefinition& newDef);
+
+	/// initial creation of _installedPlugins definitions
 	void updateInstalledPlugins(void);
+
+private slots:
+	/// is called when a pluginAction is ongoing
+	void doPluginAction(PluginAction action, QString id, bool success = true, PluginDefinition def = PluginDefinition());
+
+	/// update available plugins
 	void updateAvailablePlugins(void);
+
 	/// replys from http utils
-	void replyReceived(bool success, int type, QString url, QByteArray data);
+	void replyReceived(bool success, int type, QString id, QByteArray data);
 };

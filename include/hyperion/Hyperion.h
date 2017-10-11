@@ -206,8 +206,10 @@ public:
 	/// get the root path for all hyperion user data files
 	QString getRootPath() { return _rootPath; };
 
-	/// unique id per instance
-	QString id;
+	/// get unique id per instance
+	QString getId(){ return _id; };
+	/// set unique id
+	void setId(QString id){ _id = id; };
 
 	int getLatchTime() const;
 
@@ -424,6 +426,9 @@ private:
 
 	/// root path for all hyperion user data files
 	QString _rootPath;
+
+	/// unique id per instance
+	QString _id;
 
 	/// The timer for handling priority channel timeouts
 	QTimer _timer;

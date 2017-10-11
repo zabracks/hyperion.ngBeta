@@ -49,7 +49,7 @@ void StaticFileServing::onServerStarted (quint16 port)
 	const QString mDNSDescr = generalConfig["name"].toString("") + "@" + QHostInfo::localHostName() + ":" + QString::number(port);
 
 	// txt record for zeroconf
-	QString id = _hyperion->id;
+	QString id = _hyperion->getId();
 	std::string version = HYPERION_VERSION;
 	std::vector<std::pair<std::string, std::string> > txtRecord = {{"id",id.toStdString()},{"version",version}};
 

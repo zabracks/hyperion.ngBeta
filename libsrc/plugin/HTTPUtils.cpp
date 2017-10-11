@@ -22,13 +22,16 @@ HTTPUtils::~HTTPUtils()
 
 void HTTPUtils::readReply(QNetworkReply* reply)
 {
+	// get id
+	QString id = _currReplies.take(reply);
+
 	// Remove start - Remove this with QT 5.6 and use QNetworkRequest::setAttribute(QNetworkRequest::FollowRedirectsAttribute, true); to enable auto redirects
 	QString possibleRedirectUrl = reply->attribute(QNetworkRequest::RedirectionTargetAttribute).toString();
 	// no check for endless redirect loops, if url is not empty we got a redirect
 	if(!possibleRedirectUrl.isEmpty())
 	{
 		Debug(_log,"Redirect to url %s",QSTRING_CSTR(possibleRedirectUrl));
-		sendGet(possibleRedirectUrl);
+		sendGet(possibleRedirectUrl, id);
 		return;
 	}
 	// Remove end
@@ -44,7 +47,7 @@ void HTTPUtils::readReply(QNetworkReply* reply)
 		Error(_log, "Request failed (%s) for %s", QSTRING_CSTR(reply->errorString()), QSTRING_CSTR(req.url().toString()));
 	}
 
- 	emit replyReceived(success, type, req.url().toString(), ba);
+ 	emit replyReceived(success, type, id, ba);
 	reply->deleteLater();
 }
 
@@ -69,13 +72,13 @@ bool HTTPUtils::isValid(const QUrl& url)
 	return false;
 }
 
-bool HTTPUtils::sendGet(const QString& url)
+bool HTTPUtils::sendGet(const QString& url, const QString& id)
 {
 	const QUrl iurl(url);
 	if(isValid(iurl))
 	{
 		const QNetworkRequest req(iurl);
-		_manager->get(req);
+		_currReplies.insert(_manager->get(req), id);
 		return true;
 	}
 	Error(_log, "Failed to send GET request to %s", QSTRING_CSTR(iurl.url()));
@@ -83,26 +86,26 @@ bool HTTPUtils::sendGet(const QString& url)
 
 }
 
-bool HTTPUtils::sendPost(const QString& url, const QByteArray& ba)
+bool HTTPUtils::sendPost(const QString& url, const QByteArray& ba, const QString& id)
 {
 	const QUrl iurl(url);
 	if(isValid(iurl))
 	{
 		const QNetworkRequest req(iurl);
-		_manager->post(req, ba);
+		_currReplies.insert(_manager->post(req, ba), id);
 		return true;
 	}
 	Error(_log, "Failed to send POST request to %s", QSTRING_CSTR(iurl.url()));
 	return false;
 }
 
-bool HTTPUtils::sendPut(const QString& url, const QByteArray& ba)
+bool HTTPUtils::sendPut(const QString& url, const QByteArray& ba, const QString& id)
 {
 	const QUrl iurl(url);
 	if(isValid(iurl))
 	{
 		const QNetworkRequest req(iurl);
-		_manager->put(req, ba);
+		_currReplies.insert(_manager->put(req, ba), id);
 		return true;
 	}
 	Error(_log, "Failed to send PUT request to %s", QSTRING_CSTR(iurl.url()));

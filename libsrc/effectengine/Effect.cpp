@@ -120,11 +120,18 @@ Effect::~Effect()
 void Effect::run()
 {
 	// switch to the main thread state and acquire the GIL
-	PyEval_RestoreThread(_mainThreadState);
-
+	PyEval_AcquireLock();
 	// Initialize a new thread state
-	_interpreterThreadState = Py_NewInterpreter();
-
+	PyThreadState* state = Py_NewInterpreter();
+	// verify we got a thread state
+	if (state == nullptr)
+	{
+		PyEval_ReleaseLock();
+		Error(Logger::getInstance("EFFECTENGINE"), "No thread state!");
+		return;
+	}
+	// swap interpreter thread
+	PyThreadState_Swap(state);
 	// import the buildtin Hyperion module
 	PyObject * module = PyImport_ImportModule("hyperion");
 
@@ -168,8 +175,10 @@ void Effect::run()
 	}
 
 	// Clean up the thread state
-	Py_EndInterpreter(_interpreterThreadState);
+	Py_EndInterpreter(state);
 	_interpreterThreadState = nullptr;
+	//_mainThreadState = PyEval_SaveThread();
+	//PyEval_ReleaseThread(_mainThreadState);
 	PyEval_ReleaseLock();
 }
 
