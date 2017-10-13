@@ -39,32 +39,12 @@ namespace JsonUtils {
 
 	bool parse(const QString& path, const QString& data, QJsonObject& obj, Logger* log)
 	{
-		QJsonDocument doc;
-		if(!parse(path, data, doc, log))
-			return false;
-
-		obj = doc.object();
-		return true;
-	}
-
-	bool parse(const QString& path, const QString& data, QJsonArray& arr, Logger* log)
-	{
-		QJsonDocument doc;
-		if(!parse(path, data, doc, log))
-			return false;
-
-		arr = doc.array();
-		return true;
-	}
-
-	bool parse(const QString& path, const QString& data, QJsonDocument& doc, Logger* log)
-	{
 		//remove Comments in data
 		QString cleanData = data;
-		//cleanData .remove(QRegularExpression("([^:]?\\/\\/.*)"));
+		cleanData.remove(QRegularExpression("([^:]?\\/\\/.*)"));
 
 		QJsonParseError error;
-		doc = QJsonDocument::fromJson(cleanData.toUtf8(), &error);
+		QJsonDocument doc = QJsonDocument::fromJson(cleanData.toUtf8(), &error);
 
 		if (error.error != QJsonParseError::NoError)
 		{
@@ -83,6 +63,7 @@ namespace JsonUtils {
 			Error(log,"Failed to parse json data from %s: Error: %s at Line: %i, Column: %i", QSTRING_CSTR(path), QSTRING_CSTR(error.errorString()), errorLine, errorColumn);
 			return false;
 		}
+		obj = doc.object();
 		return true;
 	}
 

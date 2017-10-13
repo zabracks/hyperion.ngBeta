@@ -24,9 +24,10 @@ EffectEngine::EffectEngine(Hyperion * hyperion, const QJsonObject & jsonEffectCo
 	, _effectConfig(jsonEffectConfig)
 	, _availableEffects()
 	, _activeEffects()
-	, _mainThreadState(nullptr)
 	, _log(Logger::getInstance("EFFECTENGINE"))
+	, _mainThreadState(nullptr)
 {
+
 	Q_INIT_RESOURCE(EffectEngine);
 	qRegisterMetaType<std::vector<ColorRgb>>("std::vector<ColorRgb>");
 	qRegisterMetaType<hyperion::Components>("hyperion::Components");
@@ -282,7 +283,7 @@ int EffectEngine::runEffectScript(const QString &script, const QString &name, co
 	// create the effect
     Effect * effect = new Effect(_mainThreadState, priority, timeout, script, name, args, origin, smoothCfg);
 	connect(effect, SIGNAL(setColors(int,std::vector<ColorRgb>,int,bool,hyperion::Components,const QString,unsigned)), _hyperion, SLOT(setColors(int,std::vector<ColorRgb>,int,bool,hyperion::Components,const QString,unsigned)), Qt::QueuedConnection);
-	connect(effect, SIGNAL(effectFinished(Effect*)), this, SLOT(effectFinished(Effect*)));
+	connect(effect, &QThread::finished, this, &EffectEngine::effectFinished);
 	_activeEffects.push_back(effect);
 
 	// start the effect
@@ -298,7 +299,7 @@ void EffectEngine::channelCleared(int priority)
 	{
 		if (effect->getPriority() == priority)
 		{
-			effect->abort();
+			effect->requestInterruption();
 		}
 	}
 }
@@ -309,14 +310,15 @@ void EffectEngine::allChannelsCleared()
 	{
 		if (effect->getPriority() != 254)
 		{
-			effect->abort();
+			effect->requestInterruption();
 		}
 	}
 }
 
-void EffectEngine::effectFinished(Effect *effect)
+void EffectEngine::effectFinished()
 {
-	if (!effect->isAbortRequested())
+	Effect* effect = qobject_cast<Effect*>(sender());
+	if (!effect->isInterruptionRequested())
 	{
 		// effect stopped by itself. Clear the channel
 		_hyperion->clear(effect->getPriority());
