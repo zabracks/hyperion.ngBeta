@@ -5,11 +5,13 @@
 #include <hyperion/Hyperion.h>
 
 // proj
-#include <plugin/Plugin.h>
 #include <plugin/Files.h>
 
 // qt
 #include <QList>
+
+class Plugin;
+typedef struct _ts PyThreadState;
 
 class Plugins : public QObject
 {
@@ -40,6 +42,7 @@ private:
 	/// Files instance
 	Files _files;
 
+	PyThreadState* _mainThreadState;
 	/// start or restart a plugin
 
 

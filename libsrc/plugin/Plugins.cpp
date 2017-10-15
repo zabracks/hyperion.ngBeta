@@ -1,5 +1,9 @@
 // project
 #include <plugin/Plugins.h>
+#include "Plugin.h"
+
+// effect engine
+#include <effectengine/EffectEngine.h>
 
 // qt includes
 #include <QTimer>
@@ -9,7 +13,8 @@ Plugins::Plugins()
 	: QObject()
 	, _log(Logger::getInstance("PLUGINS"))
 	, _hyperion(Hyperion::getInstance())
-	, _files(_log, _hyperion->getRootPath(), _hyperion->getId())
+	, _files(_hyperion->getRootPath(), _hyperion->getId())
+	, _mainThreadState(_hyperion->getEffectEngineInstance()->getMainThreadState())
 {
 
 	// listen for pluginActions
@@ -31,7 +36,11 @@ void Plugins::pluginFinished()
 {
 	Plugin* plugin = qobject_cast<Plugin*>(sender());
 	QString id = plugin->getId();
+	bool err = plugin->hasError();
 
+	emit pluginAction(P_STOPPED, id, true);
+	if(err)
+		emit pluginAction(P_ERROR, id, true);
 	// delete pointer and remove from list
 	_runningPlugins.remove(id);
 	plugin->deleteLater();
@@ -109,8 +118,9 @@ void Plugins::start(QString id)
 	}
 
 	// create plugin instance
-	Plugin* newPlugin = new Plugin(def, id, dPaths);
+	Plugin* newPlugin = new Plugin(_mainThreadState, def, id, dPaths);
 	_runningPlugins.insert(id, newPlugin);
+	emit pluginAction(P_STARTED, id, true);
 	// get info when a plugin thread exits
 	connect(newPlugin, &QThread::finished, this, &Plugins::pluginFinished);
 }

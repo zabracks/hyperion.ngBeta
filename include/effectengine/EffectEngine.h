@@ -29,6 +29,8 @@ public:
 	EffectEngine(Hyperion * hyperion, const QJsonObject & jsonEffectConfig);
 	virtual ~EffectEngine();
 
+	PyThreadState* getMainThreadState() { return _mainThreadState; };
+
 	void readEffects();
 
 	const std::list<EffectDefinition> & getEffects() const

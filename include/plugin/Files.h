@@ -16,11 +16,10 @@ class Files : public QObject
 public:
 	///
 	/// @brief Constructor
-	/// @param[in]  log      The Logger of the caller
 	/// @param[in]  rootPath rootPath of hyperion user data
 	/// @param[in]  id       id of hyperion
 	///
-	Files(Logger* log, const QString& rootPath, const QString& id);
+	Files(const QString& rootPath, const QString& id);
 	~Files();
 
 	QMap<QString, PluginDefinition> getInstalledPlugins(void){ return _installedPlugins; };

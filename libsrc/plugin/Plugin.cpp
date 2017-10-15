@@ -1,9 +1,6 @@
-// Python
-#include <Python.h>
-#undef B0
 
 // proj include
-#include <plugin/Plugin.h>
+#include "Plugin.h"
 
 // qt include
 #include <QDebug>
@@ -15,8 +12,9 @@
 	#define PY_PATH_SEP ":";
 #endif
 
-Plugin::Plugin(const PluginDefinition& def, const QString& id,  const QStringList& dPaths)
+Plugin::Plugin(PyThreadState* mainState, const PluginDefinition& def, const QString& id,  const QStringList& dPaths)
 	: QThread()
+	, _mainState(mainState)
 	, _def(def)
 	, _id(id)
 	, _dPaths(dPaths)
@@ -35,7 +33,7 @@ void Plugin::run()
 {
 	qDebug()<<"PLUGIN RUNNER"<<_id;
 	// gil lock
-	PyEval_AcquireLock();
+	PyEval_RestoreThread(_mainState);
 	// Initialize a new thread state
 	PyThreadState* state = Py_NewInterpreter();
 	// verify we got a thread state
@@ -43,6 +41,7 @@ void Plugin::run()
 	{
 		PyEval_ReleaseLock();
 		Error(_log, "No thread state for id %s!",QSTRING_CSTR(_id));
+		_error = true;
 		return;
 	}
 	// swap interpreter thread
@@ -51,16 +50,20 @@ void Plugin::run()
 	// create and apply Python path with dependencies
 	handlePyPath();
 
-	PyObject *file = PyFile_FromString((char *)QSTRING_CSTR(_def.entryPy), (char*)"r");
-	FILE *fp = PyFile_AsFile(file);
+	PyObject *ioMod, *openedFile;
+	ioMod = PyImport_ImportModule("io");
+	openedFile = PyObject_CallMethod(ioMod, "open", "ss", (char *)QSTRING_CSTR(_def.entryPy), "r");
+	Py_DECREF(ioMod);
+	FILE *fp = PyFile_AsFileWithMode(openedFile, (char *)"r");
 
 	if (fp == nullptr)
 	{
 		Error(_log, "ID %s: Failed to open script '%s'", QSTRING_CSTR(_id), QSTRING_CSTR(_def.entryPy));
+		_error = true;
 	}
 	else
 	{
-		PyObject *f = PyString_FromString(QSTRING_CSTR(_def.entryPy)); // New ref
+		PyObject *f = PyUnicode_FromString(QSTRING_CSTR(_def.entryPy)); // New ref
 		//PyDict_SetItemString(moduleDict, "__file__", f);
 		//onPythonModuleInitialization(moduleDict);
 		Py_DECREF(f);
@@ -77,6 +80,7 @@ void Plugin::run()
 		if (!result && PyErr_Occurred()) // borrowed
 		{
 			printException();
+			_error = true;
 		}
 		Py_XDECREF(result);  // release "result"
 		Py_DECREF(main_dict);  // release "main_dict"
@@ -120,12 +124,12 @@ void Plugin::handlePyPath(void)
 		for (int i = 0; i < PyList_Size(pathObj); i++)
 		{
 			PyObject *e = PyList_GetItem(pathObj, i); // borrowed ref
-			if (e != NULL && PyString_Check(e))
-				addNativePath(PyString_AsString(e));
+			if (e != NULL && PyUnicode_Check(e))
+				addNativePath(PyUnicode_AsUTF8(e));
 		}
 	}
 	else
-		addNativePath(Py_GetPath());
+		addNativePath(QString::fromWCharArray(Py_GetPath()).toStdString());
 
 	Py_DECREF(sysMod);
 
@@ -136,8 +140,8 @@ void Plugin::handlePyPath(void)
 	}
 
 	// apply path
-	Debug(_log,"ID %s: Python path: %s",QSTRING_CSTR(_id),_pythonPath.c_str())
-	PySys_SetPath((char *)_pythonPath.c_str());
+	Debug(_log,"ID %s: Python path: %s",QSTRING_CSTR(_id),_pythonPath.c_str());
+	PySys_SetPath(QString::fromStdString(_pythonPath).toStdWString().c_str());
 }
 
 void Plugin::addNativePath(const std::string& path)
@@ -171,8 +175,8 @@ void Plugin::printException(void)
 			PyObject *class_name = nullptr; // Object "class_name" initialized to NULL for Py_XDECREF
 			class_name = PyObject_GetAttrString(classPtr, "__name__"); // New Reference or NULL
 
-			if(class_name && PyString_Check(class_name))
-				message.append(PyString_AsString(class_name));
+			if(class_name && PyUnicode_Check(class_name))
+				message.append(PyUnicode_AsUTF8(class_name));
 
 			Py_DECREF(classPtr); // release "classPtr" when done
 			Py_XDECREF(class_name); // Use Py_XDECREF() to ignore NULL references
@@ -181,12 +185,12 @@ void Plugin::printException(void)
 		PyObject *valueString = nullptr;
 		valueString = PyObject_Str(errorValue); // New Reference or NULL
 
-		if(valueString && PyString_Check(valueString))
+		if(valueString && PyUnicode_Check(valueString))
 		{
 			if(!message.isEmpty())
 				message.append(": ");
 
-			message.append(PyString_AsString(valueString));
+			message.append(PyUnicode_AsUTF8(valueString));
 		}
 		Py_XDECREF(valueString); // Use Py_XDECREF() to ignore NULL references
 
@@ -200,7 +204,7 @@ void Plugin::printException(void)
 		PyObject *tracebackModule = nullptr, *methodName = nullptr, *tracebackList = nullptr;
 
 		tracebackModule = PyImport_ImportModule("traceback"); // New Reference or NULL
-		methodName = PyString_FromString("format_exception"); // New Reference or NULL
+		methodName = PyUnicode_FromString("format_exception"); // New Reference or NULL
 		tracebackList = PyObject_CallMethodObjArgs(tracebackModule, methodName, errorType, errorValue, errorTraceback, NULL); // New Reference or NULL
 
 		if(tracebackList)
@@ -210,7 +214,7 @@ void Plugin::printException(void)
 			PyObject* item;
 			while( (item = PyIter_Next(iterator)) ) // New Reference
 			{
-				Error(_log, "## %s", QSTRING_CSTR(QString(PyString_AsString(item)).trimmed()));
+				Error(_log, "## %s", QSTRING_CSTR(QString(PyUnicode_AsUTF8(item)).trimmed()));
 				Py_DECREF(item); // release "item" when done
 			}
 			Py_DECREF(iterator);  // release "iterator" when done
@@ -230,4 +234,28 @@ void Plugin::printException(void)
 		// PyErr_PrintEx(0); // Remove this line to switch off stderr output
 	}
 	Error(_log,"###### EXCEPTION END ######");
+}
+
+FILE* Plugin::PyFile_AsFileWithMode(PyObject *py_file, const char *mode)
+{
+    FILE *f;
+    PyObject *ret;
+    int fd;
+
+    ret = PyObject_CallMethod(py_file, "flush", "");
+    if (ret == NULL)
+        return NULL;
+    Py_DECREF(ret);
+
+    fd = PyObject_AsFileDescriptor(py_file);
+    if (fd == -1)
+        return NULL;
+
+    f = fdopen(fd, mode);
+    if (f == NULL) {
+        PyErr_SetFromErrno(PyExc_OSError);
+		return NULL;
+	}
+
+    return f;
 }

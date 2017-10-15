@@ -15,11 +15,11 @@
 // QuaZip
 #include <JlCompress.h>
 
-Files::Files(Logger* log, const QString& rootPath, const QString& id)
+Files::Files(const QString& rootPath, const QString& id)
 	: QObject()
-	, _log(log)
+	, _log(Logger::getInstance("PLUGINS"))
 	, _id(id)
-	, _http(new HTTPUtils(log))
+	, _http(new HTTPUtils(_log))
 {
 	// create folder structure
 	_pluginsDir = rootPath + "/plugins";
@@ -64,7 +64,10 @@ void Files::replyReceived(bool success, int type, QString id, QByteArray data)
 			// updateAvailablePlugins
 			QJsonArray arr;
 			if(!JsonUtils::parse(id, QString(data), arr, _log))
+			{
+				Error(_log, "Failed to parse plugin repository");
 				return;
+			}
 
 			_availablePlugins.clear();
 			for(const auto & e : arr)
@@ -83,7 +86,8 @@ void Files::replyReceived(bool success, int type, QString id, QByteArray data)
 				QString pid = metaObj["id"].toString();
 				_availablePlugins.insert(pid,newDefinition);
 			}
-
+			// notify the update
+			emit pluginAction(P_UPDATED_AVAIL, id, true);
 			// check all installed plugins for updates
 			doUpdateCheck();
 		}
@@ -219,7 +223,7 @@ void Files::installPlugin(const QString& id)
 	// verify the plugin exists in availablePlugins
 	if(!_availablePlugins.contains(id))
 	{
-		Error(_log, "Plugin id '%s' doesn't exist in repository!", QSTRING_CSTR(id));
+		Error(_log, "Plugin id '%s' doesn't exist in repository, therefore you can't install/update it", QSTRING_CSTR(id));
 		emit pluginAction(P_INSTALLED, id, false);
 		return;
 	}

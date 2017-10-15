@@ -1,5 +1,10 @@
 #pragma once
 
+// Python
+#undef slots
+#include <Python.h>
+#define slots
+
 //hyperion incl
 #include <utils/Logger.h>
 #include <plugin/PluginDefinition.h>
@@ -13,7 +18,7 @@ class Plugin : public QThread
 
 public:
 
-	Plugin(const PluginDefinition& def, const QString& id, const QStringList& dPaths);
+	Plugin(PyThreadState* mainState, const PluginDefinition& def, const QString& id, const QStringList& dPaths);
 	virtual ~Plugin();
 
 	// QThread inherited run method
@@ -26,7 +31,10 @@ public:
 	/// check if abort is in progress
 	bool isAborting(){ return _abortRequested; };
 
+	bool hasError(){ return _error; };
+
 private:
+	PyThreadState* _mainState;
 	/// definition of this instance
 	PluginDefinition _def;
 	/// id of the plugin
@@ -39,6 +47,8 @@ private:
 	bool _abortRequested = false;
 	/// store py path
 	std::string _pythonPath;
+	/// true if error occurred
+	bool _error = false;
 
 	// add a python path to _pythonPath
 	void addNativePath(const std::string& path);
@@ -48,4 +58,6 @@ private:
 
 	// prints exception to log
 	void printException(void);
+
+	FILE* PyFile_AsFileWithMode(PyObject *py_file, const char *mode);
 };

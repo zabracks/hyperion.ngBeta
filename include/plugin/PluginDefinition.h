@@ -29,5 +29,7 @@ enum PluginAction{
 	P_STOPPED,
 	P_SAVE,
 	P_SAVED,
-	P_UPD_AVAIL
+	P_ERROR,
+	P_UPD_AVAIL,
+	P_UPDATED_AVAIL
 };

@@ -95,6 +95,12 @@ public:
 	static Hyperion* getInstance();
 
 	///
+	/// @brief Get a pointer to the effect engine
+	/// @return                  EffectEngine instance pointer
+	///
+	EffectEngine* getEffectEngineInstance() { return _effectEngine; };
+
+	///
 	/// Returns the number of attached leds
 	///
 	unsigned getLedCount() const;
