@@ -31,7 +31,7 @@
 #include <protoserver/ProtoServer.h>
 #include <boblightserver/BoblightServer.h>
 #include <udplistener/UDPListener.h>
-
+#include <db/DBManager.h>
 #include "hyperiond.h"
 
 #include <QDebug>
@@ -39,6 +39,7 @@
 HyperionDaemon::HyperionDaemon(QString configFile, const QString rootPath, QObject *parent)
 	: QObject(parent)
 	, _log(Logger::getInstance("MAIN"))
+	, _dBManager(nullptr)
 	, _kodiVideoChecker(nullptr)
 	, _jsonServer(nullptr)
 	, _protoServer(nullptr)
@@ -55,6 +56,10 @@ HyperionDaemon::HyperionDaemon(QString configFile, const QString rootPath, QObje
 	, _hyperion(nullptr)
 	, _stats(nullptr)
 {
+
+	_dBManager = new DBManager();
+	_dBManager->setRootPath(rootPath);
+	// get config
 	loadConfig(configFile);
 
 	if (Logger::getLogLevel() == Logger::WARNING)
@@ -105,6 +110,7 @@ void HyperionDaemon::freeObjects()
 	delete _boblightServer;
 	delete _udpListener;
 	delete _stats;
+	delete _dBManager;
 
 	_v4l2Grabbers.clear();
 	_amlGrabber     = nullptr;
@@ -424,12 +430,7 @@ void HyperionDaemon::createSystemFrameGrabber()
 			if ( type == "auto" )
 			{
 				// dispmanx -> on raspi
-				// TODO currently a compile option
-				#ifdef ENABLE_DISPMANX
-				if (true)
-				#else
-				if (false)
-				#endif
+				if (QFile::exists("/dev/vchiq"))
 				{
 					type = "dispmanx";
 				}

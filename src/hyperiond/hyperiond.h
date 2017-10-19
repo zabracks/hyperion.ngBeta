@@ -50,6 +50,7 @@
 
 
 class SysTray;
+class DBManager;
 
 class HyperionDaemon : public QObject
 {
@@ -83,6 +84,7 @@ private:
 	void createGrabberX11(const QJsonObject & grabberConfig);
 
 	Logger*             _log;
+	DBManager*          _dBManager;
 	QJsonObject         _qconfig;
 	KODIVideoChecker*   _kodiVideoChecker;
 	JsonServer*         _jsonServer;
