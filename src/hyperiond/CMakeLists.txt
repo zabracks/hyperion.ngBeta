@@ -19,6 +19,7 @@ target_link_libraries(hyperiond
 		webconfig
 		bonjour
 		plugin
+		database
 )
 
 if (ENABLE_DISPMANX)
