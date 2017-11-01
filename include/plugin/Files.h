@@ -6,6 +6,7 @@
 // forward decl
 class QTimer;
 class HTTPUtils;
+class PDBWrapper;
 ///
 /// @brief Handle all file system related tasks, init downloads and repo sync
 ///
@@ -18,14 +19,22 @@ public:
 	/// @brief Constructor
 	/// @param[in]  rootPath rootPath of hyperion user data
 	/// @param[in]  id       id of hyperion
+	/// @param[in]  PDB      PDBWrapper instance
 	///
-	Files(const QString& rootPath, const QString& id);
+	Files(const QString& rootPath, const QString& id, PDBWrapper* PDB);
 	~Files();
 
-	QMap<QString, PluginDefinition> getInstalledPlugins(void){ return _installedPlugins; };
-	QMap<QString, PluginDefinition> getAvailablePlugins(void){ return _availablePlugins; };
+	/// init files
+	void init(void);
+
+	QMap<QString, PluginDefinition> getInstalledPlugins(void) const { return _installedPlugins; };
+	QMap<QString, PluginDefinition> getAvailablePlugins(void) const { return _availablePlugins; };
 
 	bool getPluginDefinition(const QString& id, PluginDefinition& def);
+
+	void removePlugin(const QString& id);
+
+	void saveSettings(const QString& id, const QJsonObject& settings);
 
 signals:
 	///
@@ -42,6 +51,8 @@ private:
 	Logger* _log;
 	/// id of hyperion
 	const QString _id;
+	/// PDBWrapper instance
+	PDBWrapper* _PDB;
 	/// HTTP Utils instance
 	HTTPUtils* _http;
 
@@ -72,18 +83,21 @@ private:
 	/// install or update the given plugin
 	void installPlugin(const QString& id);
 
-	/// Create plugin definition from plugin id, return true on success; push to _installedPlugins
-	bool updateInstalledPlugin(const QString& tid, PluginDefinition& newDef);
+	/// Create plugin definition from plugin id, return true on success; push to _installedPlugins;
+	/// skipStart when installing as INSTALLED should emit before START
+	bool updateInstalledPlugin(const QString& tid, const bool& skipStart = false);
 
-	/// initial creation of _installedPlugins definitions
-	void updateInstalledPlugins(void);
+	/// initial creation of _installedPlugins definitions, call just once on startup
+	void readInstalledPlugins(void);
 
-private slots:
-	/// is called when a pluginAction is ongoing
+public slots:
+	/// is called from Plugins
 	void doPluginAction(PluginAction action, QString id, bool success = true, PluginDefinition def = PluginDefinition());
 
 	/// update available plugins
 	void updateAvailablePlugins(void);
+
+private slots:
 
 	/// replys from http utils
 	void replyReceived(bool success, int type, QString id, QByteArray data);

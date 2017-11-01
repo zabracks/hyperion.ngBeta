@@ -3,14 +3,23 @@
 #include <utils/Logger.h>
 #include <QMap>
 #include <QVariant>
+#include <QPair>
+#include <QVector>
 
 class QSqlDatabase;
+class QSqlQuery;
+
+typedef QPair<QString,QVariant> CPair;
+typedef QVector<CPair> VectorPair;
 
 ///
 /// @brief Database interface for SQLite3.
 ///        Inherit this class to create component specific methods based on this interface
 ///        Usage: setTable(name) once before you use read/write actions
 ///        To use another database use setDb(newDB) (defaults to "hyperion")
+///
+///        Incompatible functions with SQlite3:
+///        QSqlQuery::size() returns always -1
 ///
 class DBManager : public QObject
 {
@@ -46,31 +55,58 @@ public:
 	bool createColumn(const QString& column) const;
 
 	///
-	/// @brief Check if record (id) exists in table, of column
-	/// @param[in]  column   The column name of the table
-	/// @param[in]  id       The value of the column to search for
-	/// @return              True on success else false
+	/// @brief Check if at least one record exists in table with the conditions
+	/// @param[in]  conditions The search conditions (WHERE)
+	/// @return                True on success else false
 	///
-	bool recordExists(const QString& column, const QString& id) const;
+	bool recordExists(const VectorPair& conditions) const;
 
 	///
-	/// @brief Create a new record in table with idfield and idvalue (primary key) and additional key:value pairs in columns
-	///        If the record already exists, updateRecord() is called to update the existing record identified by idfield and idvalue
-	/// @param[in]  idfield  primary key column name
-	/// @param[in]  idvalue  primary key column value
-	/// @param[in]  columns  columns to create or update
-	/// @return              True on success else false
+	/// @brief Create a new record in table when the conditions find no existing entry. Add additional key:value pairs in columns
+	///        DO NOT repeat column keys between 'conditions' and 'columns' as they will be merged on creation
+	/// @param[in]  conditions conditions to search for, as a record may exist and should be updated instead (WHERE)
+	/// @param[in]  columns    columns to create or update (optional)
+	/// @return                True on success else false
 	///
-	bool createRecord(const QString& idfield, const QString& idvalue, const QMap<QString,QVariant>& columns) const;
+	bool createRecord(const VectorPair& conditions, const QVariantMap& columns = QVariantMap()) const;
 
 	///
-	/// @brief Update a record in table with idfield and idvalue (primary key) and additional key:value pairs in columns
-	/// @param[in]  idfield  primary key column name
-	/// @param[in]  idvalue  primary key column value
-	/// @param[in]  columns  columns to update
+	/// @brief Update a record with conditions and additional key:value pairs in columns
+	/// @param[in]  conditions conditions which rows should be updated (WHERE)
+	/// @param[in]  columns    columns to update
+	/// @return                True on success else false
+	///
+	bool updateRecord(const VectorPair& conditions, const QVariantMap& columns) const;
+
+	///
+	/// @brief Get data of record
+	/// @param[in]  conditions  condition to search for (WHERE)
+	/// @param[out] results     results of query
+	/// @param[in]  tColumns    target columns to search in (optional)
+	/// @return                 True on success else false
+	///
+	bool getRecord(const VectorPair& conditions, QVariantMap& results, const QStringList& tColumns = QStringList()) const;
+
+	///
+	/// @brief Delete a record determined by conditions, fails silent (return true) if entry is not found
+	/// @param[in]  conditions conditions of the row to delete it (WHERE)
+	/// @return                True on success else false
+	///
+	bool deleteRecord(const VectorPair& conditions) const;
+
+	///
+	/// @brief Check if table exists in current database
+	/// @param[in]  table   The column name of the table
 	/// @return              True on success else false
 	///
-	bool updateRecord(const QString& idfield, const QString& idvalue, const QMap<QString,QVariant>& columns) const;
+	bool tableExists(const QString& table) const;
+
+	///
+	/// @brief Delete a table, fails silent (return true) if table is not found
+	/// @param[in]  table   The column name of the table
+	/// @return              True on success else false
+	///
+	bool deleteTable(const QString& table) const;
 
 private:
 
@@ -79,4 +115,7 @@ private:
 	QString _dbn = "hyperion";
 	/// table in database
 	QString _table;
+
+	/// addBindValue to query given by QVariantList
+	void doAddBindValue(QSqlQuery& query, const QVariantList& variants) const;
 };

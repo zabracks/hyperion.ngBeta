@@ -25,13 +25,15 @@ public:
 	virtual void run();
 
 	/// get plugin id
-	QString getId(){ return _id; };
-	/// request a plugin abort, forced on destruction
-	void requestAbort(bool forced = false){ _abortRequested = true; };
-	/// check if abort is in progress
-	bool isAborting(){ return _abortRequested; };
+	const QString getId(){ return _id; };
+	/// is true when a error occurred
+	bool hasError() const { return _error; };
+	/// set the remove flag
+	void setRemoveFlag(){ _remove = true; };
+	/// get the remove flag
+	bool hasRemoveFlag() const { return _remove; };
 
-	bool hasError(){ return _error; };
+	static void registerPluginModule();
 
 private:
 	PyThreadState* _mainState;
@@ -43,12 +45,12 @@ private:
 	const QStringList _dPaths;
 	/// Logger instance
 	Logger *_log;
-	/// abort requested
-	bool _abortRequested = false;
 	/// store py path
 	std::string _pythonPath;
 	/// true if error occurred
 	bool _error = false;
+	/// true if plugin should be removed after stop
+	bool _remove = false;
 
 	// add a python path to _pythonPath
 	void addNativePath(const std::string& path);
@@ -60,4 +62,12 @@ private:
 	void printException(void);
 
 	FILE* PyFile_AsFileWithMode(PyObject *py_file, const char *mode);
+
+	// Wrapper methods for Python interpreter extra buildin methods
+	static PyMethodDef pluginMethods[];
+	static PyObject* log              (PyObject *self, PyObject *args);
+
+	static struct PyModuleDef moduleDef;
+
+	Plugin* getInstance();
 };

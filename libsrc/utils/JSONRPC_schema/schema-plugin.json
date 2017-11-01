@@ -1,0 +1,29 @@
+{
+	"type":"object",
+	"required":true,
+	"properties":{
+		"command": {
+			"type" : "string",
+			"required" : true,
+			"enum" : ["plugin"]
+		},
+		"tan" : {
+			"type" : "integer"
+		},
+		"subcommand": {
+			"type" : "string",
+			"required" : true,
+			"enum" : ["start","stop","install","remove","autoupdate","getInitData","getPlugins","updateavail","save"]
+		},
+		"id": {
+			"type" : "string"
+		},
+		"state": {
+			"type" : "boolean"
+		},
+		"data": {
+			"type" : "object"
+		}
+	},
+	"additionalProperties": false
+}

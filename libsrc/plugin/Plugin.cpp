@@ -12,6 +12,28 @@
 	#define PY_PATH_SEP ":";
 #endif
 
+struct PyModuleDef Plugin::moduleDef = {
+	PyModuleDef_HEAD_INIT,
+	"plugin",            /* m_name */
+	"Plugin module",     /* m_doc */
+	-1,                    /* m_size */
+	Plugin::pluginMethods, /* m_methods */
+	NULL,                  /* m_reload */
+	NULL,                  /* m_traverse */
+	NULL,                  /* m_clear */
+	NULL,                  /* m_free */
+};
+
+void Plugin::registerPluginModule()
+{
+	PyImport_AddModule("plugin");
+	PyObject* module = PyModule_Create(&moduleDef);
+
+	PyObject* sys_modules = PyImport_GetModuleDict();
+	PyDict_SetItemString(sys_modules, "plugin", module);
+	Py_DECREF(module);
+}
+
 Plugin::Plugin(PyThreadState* mainState, const PluginDefinition& def, const QString& id,  const QStringList& dPaths)
 	: QThread()
 	, _mainState(mainState)
@@ -46,6 +68,13 @@ void Plugin::run()
 	}
 	// swap interpreter thread
 	PyThreadState_Swap(state);
+
+	// get plugin module
+	//PyObject *module = PyImport_ImportModule("plugin"); // new ref
+	// create capsule of this instance; add it to the module
+	//PyObject *instance = PyCapsule_New((void *)this, "plugin.inst", NULL);
+	//PyModule_AddObject(module, "plugin", instance);
+	//Py_DECREF(module);
 
 	// create and apply Python path with dependencies
 	handlePyPath();
@@ -109,7 +138,6 @@ void Plugin::run()
 
 	Py_EndInterpreter(state);
 	PyEval_ReleaseLock();
-	qDebug()<<"PLUGIN STOP"<<_id;
 }
 
 void Plugin::handlePyPath(void)
@@ -258,4 +286,23 @@ FILE* Plugin::PyFile_AsFileWithMode(PyObject *py_file, const char *mode)
 	}
 
     return f;
+}
+
+// Python method table
+PyMethodDef Plugin::pluginMethods[] = {
+	{"log"              , Plugin::log              , METH_VARARGS, "Write to Hyperion log."},
+	{NULL, NULL, 0, NULL}
+};
+
+
+PyObject* Plugin::log(PyObject *self, PyObject *args)
+{
+	//Error(_log,"I was called from a plugin!!!!");
+	return Py_BuildValue("");
+}
+
+Plugin* Plugin::getInstance()
+{
+	// get pointer from capsule
+	return (Plugin*)PyCapsule_Import("plugin.inst", 0);
 }

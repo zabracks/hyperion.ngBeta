@@ -18,5 +18,7 @@
         <file alias="schema-logging">JSONRPC_schema/schema-logging.json</file>
         <file alias="schema-processing">JSONRPC_schema/schema-processing.json</file>
         <file alias="schema-videomode">JSONRPC_schema/schema-videomode.json</file>
+		<file alias="schema-management">JSONRPC_schema/schema-management.json</file>
+		<file alias="schema-plugin">JSONRPC_schema/schema-plugin.json</file>
     </qresource>
 </RCC>

@@ -66,6 +66,16 @@ namespace JsonUtils{
 	bool validate(const QString& file, const QJsonObject& json, const QString& schemaPath, Logger* log);
 
 	///
+	/// @brief Validate json data against a schema
+	/// @param[in]   file     The path/name of json file just used for log messages
+	/// @param[in]   json     The json data
+	/// @param[in]   schema   The schema object
+	/// @param[in]   log      The logger of the caller to print errors
+	/// @return               true on success else false
+	///
+	bool validate(const QString& file, const QJsonObject& json, const QJsonObject& schema, Logger* log);
+
+	///
 	/// @brief Write json data to file
 	/// @param[in]   filenameThe file path to write
 	/// @param[in]   json    The json data to write

@@ -1,5 +1,6 @@
 // project
 #include <plugin/Files.h>
+#include "PDBWrapper.h"
 
 // hyperion
 #include <utils/JsonUtils.h>
@@ -10,21 +11,21 @@
 #include <QDir>
 #include <QJsonObject>
 #include <QTimer>
-#include <QDebug>
 
 // QuaZip
 #include <JlCompress.h>
 
-Files::Files(const QString& rootPath, const QString& id)
+Files::Files(const QString& rootPath, const QString& id, PDBWrapper* PDB)
 	: QObject()
 	, _log(Logger::getInstance("PLUGINS"))
 	, _id(id)
+	, _PDB(PDB)
 	, _http(new HTTPUtils(_log))
 {
 	// create folder structure
 	_pluginsDir = rootPath + "/plugins";
 	_packageDir = _pluginsDir + "/packages";
-	_configDir = _pluginsDir + "/config";
+	_configDir = _pluginsDir + "/config_"+id;
 
 	QDir dir;
 	dir.mkpath(_packageDir);
@@ -32,21 +33,6 @@ Files::Files(const QString& rootPath, const QString& id)
 
 	// listen for http utils reply
 	connect(_http, &HTTPUtils::replyReceived, this, &Files::replyReceived);
-
-	// listen for pluginActions
-	connect(this, &Files::pluginAction, this, &Files::doPluginAction);
-
-	// update installed plugins
-	updateInstalledPlugins();
-
-	// update avail plugins every 24h and on init
-	_rTimer = new QTimer(this);
-	_rTimer->setInterval(86400000);
-	_rTimer->start();
-	connect(_rTimer, &QTimer::timeout, this, &Files::updateAvailablePlugins);
-	updateAvailablePlugins();
-
-	//QTimer::singleShot(2000,this,SLOT(installPlugin()));
 }
 
 Files::~Files()
@@ -55,9 +41,33 @@ Files::~Files()
 	delete _rTimer;
 }
 
+void Files::init(void)
+{
+	// fetch plugins from plugin directory
+	readInstalledPlugins();
+
+	// update avail plugins every 24h
+	_rTimer = new QTimer(this);
+	_rTimer->setInterval(86400000);
+	_rTimer->start();
+	connect(_rTimer, &QTimer::timeout, this, &Files::updateAvailablePlugins);
+	updateAvailablePlugins();
+}
+
 void Files::replyReceived(bool success, int type, QString id, QByteArray data)
 {
-	if(success)
+	if(!success)
+	{
+		if(id == "P_AVAIL")
+		{
+			emit pluginAction(P_UPDATED_AVAIL, id, false);
+		}
+		else
+		{
+			Error(_log,"Failed to download plugin '%s'",QSTRING_CSTR(id));
+		}
+	}
+	else
 	{
 		if(id == "P_AVAIL")
 		{
@@ -118,7 +128,7 @@ void Files::replyReceived(bool success, int type, QString id, QByteArray data)
 
 			// Extract to plugin folder
 			// QuaZip: http://quazip.sourceforge.net/annotated.html
-			QStringList parts = JlCompress::extractDir(fpath, _pluginsDir);
+			QStringList parts = JlCompress::extractDir(fpath, _pluginsDir+"/"+pid);
 			if(parts.isEmpty())
 			{
 				Error(_log,"Extraction of plugin '%s' failed! The file seems to be corrupt.", QSTRING_CSTR(dev.name));
@@ -126,22 +136,25 @@ void Files::replyReceived(bool success, int type, QString id, QByteArray data)
 				return;
 			}
 
-			// update _installedPlugins
-			PluginDefinition newDef;
-			if(!updateInstalledPlugin(pid, newDef))
+			// try to update _installedPlugins
+			if(!updateInstalledPlugin(pid, true))
 			{
 				Error(_log,"Plugin '%s' install/update failed.", QSTRING_CSTR(dev.name));
 				emit pluginAction(P_INSTALLED, pid, false);
 				return;
 			}
 
+			// update db entry
+			_PDB->setPluginUpdatedAt(pid);
+
+			// notify with new definition
+			PluginDefinition newDef = _installedPlugins.value(pid);
 			Info(_log,"Plugin '%s' successfully installed/updated.", QSTRING_CSTR(dev.name));
 			emit pluginAction(P_INSTALLED, pid, true, newDef);
 
-			// start service after install
-			if(pid.startsWith("service."))
+			// start after install
+			if(pid.startsWith("service.") && _PDB->isPluginEnabled(pid))
 				emit pluginAction(P_START, pid);
-
 			// bytearray to unzip
 			//QBuffer buffer(&data);
 			//buffer->open(QIODevice::ReadOnly);
@@ -162,7 +175,8 @@ void Files::doUpdateCheck(void)
 		PluginDefinition instDev = i.value();
 
 		// during development a plugin won't exist in repo, don't try to update
-		if(_availablePlugins.contains(id))
+		// check also for auto updates enabled
+		if(_availablePlugins.contains(id) && _PDB->isPluginAutoUpdateEnabled(id))
 		{
 			PluginDefinition availDev = _availablePlugins.value(id);
 			if(getIntV(availDev.version) > getIntV(instDev.version))
@@ -178,44 +192,62 @@ void Files::doUpdateCheck(void)
 void Files::doPluginAction(PluginAction action, QString id, bool success, PluginDefinition def)
 {
 	QJsonObject setting;
-
+	PluginDefinition newDef;
+	QJsonObject schema;
 	switch(action)
 	{
-		case P_REMOVE:
-			if(FileUtils::removeDir(_pluginsDir+"/"+id, _log))
-			{
-				// success used to delete also config
-				if(success)
-					FileUtils::removeFile(_configDir+"/"+id+".json", _log, true);
-
-				_installedPlugins.remove(id);
-				emit pluginAction(P_REMOVED, id, true);
-				break;
-			}
-			emit pluginAction(P_REMOVED, id, false);
-			break;
-		case P_SAVE:
-			setting = def.settings;
-			if(JsonUtils::write(_configDir+"/"+id+".json", setting, _log))
-			{
-				// update the definition
-				PluginDefinition newDef = _installedPlugins.value(id);
-				newDef.settings = setting;
-				_installedPlugins.insert(id, newDef);
-				emit pluginAction(P_SAVED, id, true, newDef);
-				break;
-			}
-			emit pluginAction(P_SAVED, id, false);
-			break;
 		case P_INSTALL:
 			installPlugin(id);
-			break;
-		case P_UPD_AVAIL:
-			updateAvailablePlugins();
 			break;
 		default:
 			break;
 	}
+}
+
+void Files::removePlugin(const QString& id)
+{
+	if(FileUtils::removeDir(_pluginsDir+"/"+id, _log))
+	{
+		FileUtils::removeFile(_configDir+"/"+id+".json", _log, true);
+
+		_installedPlugins.remove(id);
+		_PDB->deletePluginRecord(id);
+		Info(_log,"Plugin id '%s' deleted successfully",QSTRING_CSTR(id));
+		emit pluginAction(P_REMOVED, id, true);
+		return;
+	}
+	Error(_log,"Failed to delete Plugin id '%s'",QSTRING_CSTR(id));
+	emit pluginAction(P_REMOVED, id, false);
+}
+
+void Files::saveSettings(const QString& id, const QJsonObject& settings)
+{
+	if(!_installedPlugins.contains(id) || id.startsWith("module."))
+	{
+		Error(_log,"Can't save settings for id '%s', not qualified or found.",QSTRING_CSTR(id));
+		emit pluginAction(P_SAVED, id, false);
+		return;
+	}
+	PluginDefinition newDef = _installedPlugins.value(id);
+	// validate against schema
+	QJsonObject schema = newDef.settingsSchema;
+	if(!JsonUtils::validate("PluginSave:"+id, settings, schema, _log))
+	{
+		Error(_log,"Failed to validate settings for id '%s'",QSTRING_CSTR(id));
+		emit pluginAction(P_SAVED, id, false);
+		return;
+	}
+	if(JsonUtils::write(_configDir+"/"+id+".json", settings, _log))
+	{
+		// update the definition
+		newDef.settings = settings;
+		_installedPlugins.insert(id, newDef);
+		emit pluginAction(P_SAVED, id, true, newDef);
+		return;
+	}
+	Error(_log,"Failed to save settings for id '%s'",QSTRING_CSTR(id));
+	emit pluginAction(P_SAVED, id, false);
+	return;
 }
 
 void Files::installPlugin(const QString& id)
@@ -315,7 +347,7 @@ bool Files::getPluginDefinition(const QString& id, PluginDefinition& def)
 	return false;
 }
 
-bool Files::updateInstalledPlugin(const QString& tid, PluginDefinition& newDef)
+bool Files::updateInstalledPlugin(const QString& tid, const bool& skipStart)
 {
 	// get plugin.json for meta data
 	QString pd(_pluginsDir+"/"+tid);
@@ -361,12 +393,19 @@ bool Files::updateInstalledPlugin(const QString& tid, PluginDefinition& newDef)
 		settingsSchemaObj,
 		settingsObj
 	};
-	newDef = newDefinition;
 	_installedPlugins.insert(id,newDefinition);
+
+	// create database entry if required
+	_PDB->createPluginRecord(id);
+	// start/restart(for updated plugins) service if enabled in db
+	if(!skipStart && id.startsWith("service.") && _PDB->isPluginEnabled(id))
+	{
+		emit pluginAction(P_START, id);
+	}
 	return true;
 }
 
-void Files::updateInstalledPlugins(void)
+void Files::readInstalledPlugins(void)
 {
 	QDir dir(_pluginsDir);
 	QStringList filters;
@@ -377,8 +416,7 @@ void Files::updateInstalledPlugins(void)
 	// iterate through each plugin folder
 	for (const auto & pluginDir : pluginDirs)
 	{
-		PluginDefinition newDef;
-		if(!updateInstalledPlugin(pluginDir, newDef))
+		if(!updateInstalledPlugin(pluginDir))
 			Error(_log, "Failed to parse plugin directory '%s'",QSTRING_CSTR(pluginDir));
 	}
 }

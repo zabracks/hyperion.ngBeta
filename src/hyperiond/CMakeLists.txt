@@ -18,7 +18,6 @@ target_link_libraries(hyperiond
 		protoserver
 		webconfig
 		bonjour
-		plugin
 		database
 )
 

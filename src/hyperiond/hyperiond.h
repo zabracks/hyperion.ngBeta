@@ -47,7 +47,6 @@
 #include <boblightserver/BoblightServer.h>
 #include <udplistener/UDPListener.h>
 #include <utils/Stats.h>
-#include <plugin/Plugins.h>
 
 class SysTray;
 class DBManager;
@@ -101,7 +100,6 @@ private:
 	OsxWrapper*         _osxGrabber;
 	Hyperion*           _hyperion;
 	Stats*              _stats;
-	Plugins*            _plugins;
 
 	unsigned            _grabber_width;
 	unsigned            _grabber_height;

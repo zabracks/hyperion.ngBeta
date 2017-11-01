@@ -1,46 +1,72 @@
 // project
 #include <plugin/Plugins.h>
 #include "Plugin.h"
+#include "PDBWrapper.h"
 
 // effect engine
 #include <effectengine/EffectEngine.h>
 
 // qt includes
-#include <QTimer>
 #include <QDebug>
 
-Plugins::Plugins()
+Plugins::Plugins(Hyperion* hyperion)
 	: QObject()
 	, _log(Logger::getInstance("PLUGINS"))
-	, _hyperion(Hyperion::getInstance())
-	, _files(_hyperion->getRootPath(), _hyperion->getId())
+	, _hyperion(hyperion)
+	, _PDB(new PDBWrapper(_hyperion->getConfigFileName()))
+	, _files(_hyperion->getRootPath(), _hyperion->getConfigFileName(), _PDB)
 	, _mainThreadState(_hyperion->getEffectEngineInstance()->getMainThreadState())
 {
+	// make sure the table 'plugins' contains all columns
+	_PDB->createTable(QStringList()<<"updated_at TEXT DEFAULT CURRENT_TIMESTAMP"<<"id TEXT"<<"enabled INTEGER DEFAULT 1"<<"auto_update INTEGER DEFAULT 1"<<"hyperion_name TEXT");
 
-	// listen for pluginActions
-	connect(this, &Plugins::pluginAction, this, &Plugins::doPluginAction);
+	// from files
+	connect(&_files, &Files::pluginAction, this, &Plugins::doPluginAction);
+	// to files
+	connect(this, &Plugins::pluginAction, &_files, &Files::doPluginAction);
 
-	// pipe also to files
-	connect(this, &Plugins::pluginAction, &_files, &Files::pluginAction);
+	// register plugin module
+	//Plugin::registerPluginModule();
 
-	QTimer::singleShot(4000, this, SLOT(start()));
+	// file handling init after database creation and signal link
+	_files.init();
 }
 
 Plugins::~Plugins()
 {
 	foreach (Plugin* plug, _runningPlugins)
-	    plug->requestAbort(true);
+	    plug->requestInterruption();
+	delete _PDB;
+}
+
+bool Plugins::isPluginAutoUpdateEnabled(const QString& id) const
+{
+	return  _PDB->isPluginAutoUpdateEnabled(id);
 }
 
 void Plugins::pluginFinished()
 {
 	Plugin* plugin = qobject_cast<Plugin*>(sender());
-	QString id = plugin->getId();
+	const QString id = plugin->getId();
 	bool err = plugin->hasError();
 
-	emit pluginAction(P_STOPPED, id, true);
+	// notify error or stop
 	if(err)
-		emit pluginAction(P_ERROR, id, true);
+	{
+		emit pluginAction(P_ERROR, id);
+		Error(_log, "Plugin with id '%s' crashed",QSTRING_CSTR(id));
+	}
+	else
+	{
+		emit pluginAction(P_STOPPED, id);
+		Info(_log, "Plugin with id '%s' stopped",QSTRING_CSTR(id));
+	}
+
+	// remove plugin from fs if requested
+	const bool& rem = plugin->hasRemoveFlag();
+	if(rem)
+		_files.removePlugin(id);
+
 	// delete pointer and remove from list
 	_runningPlugins.remove(id);
 	plugin->deleteLater();
@@ -49,7 +75,12 @@ void Plugins::pluginFinished()
 	if(_restartQueue.contains(id))
 	{
 		_restartQueue.removeAll(id);
-		start(id);
+		// not if the plugin should be removed
+		if(!rem)
+		{
+			Debug(_log, "Init restart of plugin id '%s'", QSTRING_CSTR(id));
+			start(id);
+		}
 	}
 }
 
@@ -61,10 +92,32 @@ void Plugins::doPluginAction(PluginAction action, QString id, bool success, Plug
 			start(id);
 			break;
 		case P_STOP:
-			stop(id);
+			if(!stop(id))
+				emit pluginAction(P_STOPPED, id, false);
 			break;
 		case P_REMOVE:
-			stop(id);
+			// check if plugin is running
+			if(!stop(id, true))
+				_files.removePlugin(id);
+			break;
+		case P_AUTOUPDATE:
+			// success used to control state
+			_PDB->setPluginAutoUpdateEnable(id, success);
+			emit pluginAction(P_AUTOUPDATED, id);
+			break;
+		case P_UPD_AVAIL:
+			_files.updateAvailablePlugins();
+			break;
+		case P_SAVE:
+			_files.saveSettings(id, def.settings);
+			break;
+		// final state of a install/update, remove, updated avail from Files class - forward to external
+		case P_SAVED:
+		case P_INSTALL:
+		case P_INSTALLED:
+		case P_REMOVED:
+		case P_UPDATED_AVAIL:
+			emit pluginAction(action, id, success, def);
 			break;
 		default:
 			break;
@@ -77,6 +130,7 @@ void Plugins::start(QString id)
 	{
 		Error(_log, "Can't start plugin id '%s', it's not meant to be started",QSTRING_CSTR(id));
 		emit pluginAction(P_STARTED, id, false);
+		return;
 	}
 
 	// get the definition
@@ -85,6 +139,7 @@ void Plugins::start(QString id)
 	{
 		Error(_log, "Can't start plugin id '%s', it's not installed",QSTRING_CSTR(id));
 		emit pluginAction(P_STARTED, id, false);
+		return;
 	}
 
 	// if plugin id is currently running stop it and add to _restartQueue
@@ -92,12 +147,12 @@ void Plugins::start(QString id)
 	{
 		Plugin* plugin = _runningPlugins.value(id);
 
-		// protect queue of repeated entrys & forced Timer
-		if(plugin->isAborting())
+		// protect queue of repeated entrys
+		if(plugin->isInterruptionRequested())
 			return;
 
 		_restartQueue << id;
-		plugin->requestAbort();
+		plugin->requestInterruption();
 		return;
 	}
 
@@ -118,22 +173,38 @@ void Plugins::start(QString id)
 	}
 
 	// create plugin instance
+	// set the enable state in db if required
+	if(!_PDB->isPluginEnabled(id))
+		_PDB->setPluginEnable(id, true);
+
+	emit pluginAction(P_STARTED, id, true);
+	Info(_log, "Plugin with id '%s' started",QSTRING_CSTR(id));
+
 	Plugin* newPlugin = new Plugin(_mainThreadState, def, id, dPaths);
 	_runningPlugins.insert(id, newPlugin);
-	emit pluginAction(P_STARTED, id, true);
-	// get info when a plugin thread exits
+
+	// listen for plugin thread exit
 	connect(newPlugin, &QThread::finished, this, &Plugins::pluginFinished);
 }
 
-void Plugins::stop(QString id)
+bool Plugins::stop(const QString& id, const bool& remove) const
 {
 	if(_runningPlugins.contains(id))
 	{
+		// set the enable state in db if required
+		if(_PDB->isPluginEnabled(id))
+			_PDB->setPluginEnable(id, false);
+
 		Plugin* plugin = _runningPlugins.value(id);
 
-		if(plugin->isAborting())
-			return;
+		if(plugin->isInterruptionRequested())
+			return true;
 
-		plugin->requestAbort();
+		if(remove)
+			plugin->setRemoveFlag();
+
+		plugin->requestInterruption();
+		return true;
 	}
+	return false;
 }

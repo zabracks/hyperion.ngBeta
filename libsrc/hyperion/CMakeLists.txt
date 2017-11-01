@@ -18,5 +18,6 @@ target_link_libraries(hyperion
 	leddevice
 	bonjour
 	effectengine
+	plugins
 	${QT_LIBRARIES}
 )

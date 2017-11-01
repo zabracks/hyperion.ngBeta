@@ -93,6 +93,14 @@ namespace JsonUtils {
 		if(!readFile(schemaPath, schema, log))
 			return false;
 
+		if(!validate(file, json, schema, log))
+			return false;
+		return true;
+
+	}
+
+	bool validate(const QString& file, const QJsonObject& json, const QJsonObject& schema, Logger* log)
+	{
 		QJsonSchemaChecker schemaChecker;
 		schemaChecker.setSchema(schema);
 		if (!schemaChecker.validate(json).first)

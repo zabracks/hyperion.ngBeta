@@ -11,6 +11,7 @@
 #include <QList>
 
 class Plugin;
+class PDBWrapper;
 typedef struct _ts PyThreadState;
 
 class Plugins : public QObject
@@ -21,8 +22,15 @@ public:
 	///
 	/// Plugin constructor
 	///
-	Plugins();
+	Plugins(Hyperion* hyperion);
 	~Plugins();
+
+	QMap<QString, PluginDefinition> getInstalledPlugins(void) const { return _files.getInstalledPlugins(); };
+	QMap<QString, PluginDefinition> getAvailablePlugins(void) const { return _files.getAvailablePlugins(); };
+
+	bool isPluginRunning(const QString& id) const { return  _runningPlugins.contains(id); };
+
+	bool isPluginAutoUpdateEnabled(const QString& id) const;
 
 signals:
 	///
@@ -39,23 +47,30 @@ private:
 	Logger* _log;
 	/// Hyperion instance
 	Hyperion* _hyperion;
+
+	/// database wrapper
+	PDBWrapper* _PDB;
+
 	/// Files instance
 	Files _files;
 
 	PyThreadState* _mainThreadState;
+
 	/// start or restart a plugin
 
 
-	/// stop a plugin
-	void stop(QString id);
+	/// stop a plugin by id, with remove flag, returns false if plugin is not running
+	bool stop(const QString& id, const bool& remove = false) const;
 
 	QMap<QString,Plugin*> _runningPlugins;
 
 	QStringList _restartQueue;
 
-private slots:
-	/// is called when a pluginAction is ongoing
+public slots:
+	/// is called from JsonProcessor
 	void doPluginAction(PluginAction action, QString id, bool success = true, PluginDefinition def = PluginDefinition());
+
+private slots:
 
 	/// is called when a plugin thread exits
 	void pluginFinished();

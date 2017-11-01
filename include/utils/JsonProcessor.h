@@ -12,6 +12,9 @@
 #include <QMutex>
 #include <QString>
 
+// plugin
+#include <plugin/PluginDefinition.h>
+
 // createEffect helper
 struct find_schema: std::unary_function<EffectSchema, bool>
 {
@@ -74,6 +77,10 @@ public slots:
 	/// process and push new log messages from logger (if enabled)
 	void incommingLogMessage(Logger::T_LOG_MESSAGE);
 
+private slots:
+	/// process plugin actions from Plugins
+	void doPluginAction(PluginAction action, QString id, bool success, PluginDefinition def);
+
 signals:
 	///
 	/// Signal which is emitted when a sendSuccessReply() has been executed
@@ -88,6 +95,11 @@ signals:
 	/// Signal emits whenever a jsonmessage should be forwarded
 	///
 	void forwardJsonMessage(QJsonObject);
+
+	///
+	/// Signal emits whenever a plugin action is ongoing
+	///
+	void pluginAction(PluginAction action, QString id, bool success = true, PluginDefinition def = PluginDefinition());
 
 private:
     /// The peer address of the client
@@ -124,6 +136,12 @@ private:
 
 	/// timeout for live video refresh
 	volatile qint64 _image_stream_timeout;
+
+	/// Plugins instance
+	Plugins* _plugins;
+
+	/// if true the management for plugins is enabled
+	bool _managePlugins = false;
 
 	///
 	/// Handle an incoming JSON Color message
@@ -214,12 +232,6 @@ private:
 	///
 	void handleSchemaGetCommand(const QJsonObject & message, const QString &command, const int tan);
 
-	/// Handle an incoming JSON GetConfig message from handleConfigCommand()
-	///
-	/// @param message the incoming message
-	///
-	void handleConfigGetCommand(const QJsonObject & message, const QString &command, const int tan);
-
 	/// Handle an incoming JSON SetConfig message from handleConfigCommand()
 	///
 	/// @param message the incoming message
@@ -257,6 +269,18 @@ private:
 	///
 	void handleVideoModeCommand(const QJsonObject & message, const QString &command, const int tan);
 
+	/// Handle an incoming JSON Management message
+	///
+	/// @param message the incoming message
+	///
+	void handleManagementCommand(const QJsonObject & message, const QString &command, const int tan);
+
+	/// Handle an incoming JSON plugin message
+	///
+	/// @param message the incoming message
+	///
+	void handlePluginCommand(const QJsonObject & message, const QString &command, const int tan);
+
 	///
 	/// Handle an incoming JSON message of unknown type
 	///
@@ -266,6 +290,11 @@ private:
 	/// Send a standard reply indicating success
 	///
 	void sendSuccessReply(const QString &command="", const int tan=0);
+
+	///
+	/// Send a standard reply indicating success with data
+	///
+	void sendSuccessDataReply(const QJsonObject &data, const QString &command="", const int &tan=0);
 
 	///
 	/// Send an error message back to the client

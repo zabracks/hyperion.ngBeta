@@ -31,6 +31,9 @@
 // effect engine includes
 #include <effectengine/EffectEngine.h>
 
+// plugins
+#include <plugin/Plugins.h>
+
 #define CORE_LOGGER Logger::getInstance("Core")
 
 Hyperion* Hyperion::_hyperion = nullptr;
@@ -387,6 +390,7 @@ Hyperion::Hyperion(const QJsonObject &qjsonConfig, const QString configFile, con
 	, _muxer(_ledString.leds().size())
 	, _raw2ledAdjustment(createLedColorsAdjustment(_ledString.leds().size(), qjsonConfig["color"].toObject()))
 	, _effectEngine(nullptr)
+	, _plugins(nullptr)
 	, _messageForwarder(createMessageForwarder(qjsonConfig["forwarder"].toObject()))
 	, _qjsonConfig(qjsonConfig)
 	, _configFile(configFile)
@@ -442,6 +446,9 @@ Hyperion::Hyperion(const QJsonObject &qjsonConfig, const QString configFile, con
 	// create the effect engine, must be initialized after smoothing!
 	_effectEngine = new EffectEngine(this,qjsonConfig["effects"].toObject());
 
+	// create plugins (after effect engine -> python int)
+	_plugins = new Plugins(this);
+
 	const QJsonObject& device = qjsonConfig["device"].toObject();
 	unsigned int hwLedCount = device["ledCount"].toInt(getLedCount());
 	_hwLedCount = qMax(hwLedCount, getLedCount());
@@ -473,6 +480,12 @@ Hyperion::Hyperion(const QJsonObject &qjsonConfig, const QString configFile, con
 	update();
 }
 
+QString Hyperion::getConfigFileName() const
+{
+	QFileInfo cF(_configFile);
+	return cF.fileName();
+}
+
 int Hyperion::getLatchTime() const
 {
   return _device->getLatchTime();
@@ -496,6 +509,7 @@ void Hyperion::freeObjects(bool emitCloseSignal)
 
 
 	// delete components on exit of hyperion core
+	delete _plugins;
 	delete _effectEngine;
 	delete _device;
 	delete _raw2ledAdjustment;

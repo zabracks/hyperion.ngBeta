@@ -10,13 +10,14 @@ FILE ( GLOB Plugin_SOURCES "${CURRENT_HEADER_DIR}/*.h"  "${CURRENT_SOURCE_DIR}/*
 include_directories(${PYTHON_INCLUDE_DIRS})
 include_directories(${QUAZIP_HEADER_DIR})
 
-add_library(plugin
+add_library(plugins
 	${Plugin_SOURCES}
 )
 
-target_link_libraries(plugin
+target_link_libraries(plugins
 	hyperion
 	hyperion-utils
+	database
 	Qt5::Core
 	quazip_static
 	${PYTHON_LIBRARIES}

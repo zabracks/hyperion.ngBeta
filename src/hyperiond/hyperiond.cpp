@@ -39,7 +39,7 @@
 HyperionDaemon::HyperionDaemon(QString configFile, const QString rootPath, QObject *parent)
 	: QObject(parent)
 	, _log(Logger::getInstance("MAIN"))
-	, _dBManager(nullptr)
+	, _dBManager(new DBManager())
 	, _kodiVideoChecker(nullptr)
 	, _jsonServer(nullptr)
 	, _protoServer(nullptr)
@@ -55,11 +55,11 @@ HyperionDaemon::HyperionDaemon(QString configFile, const QString rootPath, QObje
 	, _osxGrabber(nullptr)
 	, _hyperion(nullptr)
 	, _stats(nullptr)
-	, _plugins(nullptr)
 {
-
-	_dBManager = new DBManager();
+	// init database
 	_dBManager->setRootPath(rootPath);
+	_dBManager->setDB("hyperion");
+
 	// get config
 	loadConfig(configFile);
 
@@ -111,7 +111,6 @@ void HyperionDaemon::freeObjects()
 	delete _boblightServer;
 	delete _udpListener;
 	delete _stats;
-	delete _plugins;
 	delete _dBManager;
 
 	_v4l2Grabbers.clear();
@@ -125,7 +124,6 @@ void HyperionDaemon::freeObjects()
 	_boblightServer = nullptr;
 	_udpListener    = nullptr;
 	_stats          = nullptr;
-	_plugins        = nullptr;
 }
 
 void HyperionDaemon::run()
@@ -310,9 +308,6 @@ void HyperionDaemon::startNetworkServices()
 
 	// Create Stats
 	_stats = new Stats();
-
-	// Create Plugin
-	_plugins = new Plugins();
 
 	// Create Json server if configuration is present
 	unsigned int jsonPort = 19444;

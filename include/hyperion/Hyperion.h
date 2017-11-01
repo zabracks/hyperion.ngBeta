@@ -49,6 +49,7 @@ class EffectEngine;
 class RgbChannelAdjustment;
 class MultiColorAdjustment;
 class KODIVideoChecker;
+class Plugins;
 
 ///
 /// The main class of Hyperion. This gives other 'users' access to the attached LedDevice through
@@ -99,6 +100,12 @@ public:
 	/// @return                  EffectEngine instance pointer
 	///
 	EffectEngine* getEffectEngineInstance() { return _effectEngine; };
+
+	///
+	/// @brief Get a pointer to the plugins instance
+	/// @return                  Plugins instance pointer
+	///
+	Plugins* getPluginsInstance() { return _plugins; };
 
 	///
 	/// Returns the number of attached leds
@@ -158,9 +165,13 @@ public:
 	/// @return json config
 	const QJsonObject& getQJsonConfig() { return _qjsonConfig; };
 
+	/// get path+filename of configfile
+	/// @return the current config path+filename
+	QString getConfigFilePath() { return _configFile; };
+
 	/// get filename of configfile
 	/// @return the current config filename
-	QString getConfigFileName() { return _configFile; };
+	QString getConfigFileName() const;
 
 	/// register a input source to a priority channel
 	/// @param name uniq name of input source
@@ -420,6 +431,9 @@ private:
 
 	/// Effect engine
 	EffectEngine * _effectEngine;
+
+	/// plugins instance
+	Plugins * _plugins;
 
 	// proto and json Message forwarder
 	MessageForwarder * _messageForwarder;
