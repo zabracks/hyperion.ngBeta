@@ -9,7 +9,7 @@ $(document).ready( function() {
 	$(hyperion).on("cmd-serverinfo",function(event){
 		serverInfo = event.response.info;
 		$(hyperion).trigger("ready");
-		
+
 		if (serverInfo.hyperion.config_modified)
 			$("#hyperion_reload_notify").fadeIn("fast");
 		else
@@ -42,10 +42,10 @@ $(document).ready( function() {
 			{
 				if(sess[i].type == "_hyperiond-http._tcp.")
 				{
-					wSess.push(sess[i]);  
+					wSess.push(sess[i]);
 				}
 			}
-			
+
 			if (wSess.length > 1)
 				$('#btn_instanceswitch').toggle(true);
 			else
@@ -54,24 +54,35 @@ $(document).ready( function() {
 
 	}); // end cmd-serverinfo
 
-	$(hyperion).one("cmd-sysinfo", function(event) {
+	$(hyperion).one("cmd-management-plugins", function(event) {
+		requestPluginsInitData()
+	});
+
+	$(hyperion).one("cmd-plugin-getInitData", function(event) {
+		plugins_installed = event.response.info.installedPlugins;
+		plugins_available = event.response.info.availablePlugins;
 		requestServerInfo();
+	});
+
+	$(hyperion).one("cmd-sysinfo", function(event) {
 		sysInfo = event.response.info;
 
 		currentVersion = sysInfo.hyperion.version;
+
+		requestPluginsManagement()
 	});
-	
+
 	$(hyperion).one("cmd-config-getschema", function(event) {
-		serverSchema = event.response.result;
+		serverSchema = event.response.info;
 		requestServerConfig();
-		
+
 		schema = serverSchema.properties;
 	});
 
 	$(hyperion).one("cmd-config-getconfig", function(event) {
-		serverConfig = event.response.result;
+		serverConfig = event.response.info;
 		requestSysInfo();
-		
+
 		showOptHelp = serverConfig.general.showOptHelp;
 	});
 
@@ -82,15 +93,15 @@ $(document).ready( function() {
 	$(hyperion).on("open",function(event){
 		requestServerConfigSchema();
 	});
-	
+
 	$(hyperion).one("ready", function(event) {
 		loadContent();
 	});
-	
+
 	$("#btn_hyperion_reload").on("click", function(){
 		initRestart();
 	});
-	
+
 	$(".mnava").bind('click.menu', function(e){
 		loadContent(e);
 		window.scrollTo(0, 0);
@@ -105,4 +116,3 @@ $(function(){
 		$(this).toggleClass('active inactive');
 	});
 });
-

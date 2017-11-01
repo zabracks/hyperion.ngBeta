@@ -1,0 +1,25 @@
+<div class="container-fluid">
+	<h3 class="page-header"><i class="fa fa-cubes fa-fw"></i><span data-i18n="main_menu_plugins_token">Plugins</span></h3>
+	<div id="intro_plugins"></div>
+	<div class="row">
+		<div class="col-md-12">
+			<!-- Nav tabs -->
+			<ul class="nav nav-tabs" role="tablist">
+				<li role="presentation" class="active"><a href="#t_installed" aria-controls="installed" role="tab" data-toggle="tab"><i class="fa fa-fw fa-cube"></i><span data-i18n="plugins_inst">Installed</span></a></li>
+				<li role="presentation"><a href="#t_available" aria-controls="repository" role="tab" data-toggle="tab"><i class="fa fa-fw fa-list"></i><span data-i18n="plugins_avail">Available</span></a></li>
+			</ul>
+			<!-- Tab panes -->
+			<div class="tab-content">
+				<div role="tabpanel" class="tab-pane fade in active border" id="t_installed">
+				<!--	<select id="p_filter" class="form-control" style="display:none"></select> -->
+					<div id="p_installed" class="row" style="margin-top:20px"></div>
+				</div>
+				<div role="tabpanel" class="tab-pane fade border" id="t_available">
+					<div style="margin-top:10px"><button class="btn btn-default" id="plugins_upd_repo"><i class="fa fa-fw fa-refresh"></i><span data-i18n="plugins_updaterepo">Update Repository</span></button></div>
+					<div id="p_available" class="row" style="margin-top:10px"></div>
+				</div>
+			</div>
+		</div>
+	</div>
+</div>
+<script src="/js/content_plugins.js" ></script>

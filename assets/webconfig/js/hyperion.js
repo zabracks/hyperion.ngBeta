@@ -22,6 +22,8 @@ var loggingHandlerInstalled = false;
 var watchdog = 0;
 var debugMessagesActive = true;
 var wSess = [];
+var plugins_installed = {};
+var plugins_available = {};
 
 function initRestart()
 {
@@ -184,6 +186,51 @@ function requestServerConfig()
 function requestServerConfigReload()
 {
 	sendToHyperion("config", "reload");
+}
+
+function requestPluginsManagement()
+{
+	sendToHyperion("management", "plugins");
+}
+
+function requestPluginsInitData()
+{
+	sendToHyperion("plugin", "getInitData");
+}
+
+function requestPluginStart(id)
+{
+	sendToHyperion("plugin", "start", '"id":"'+id+'"');
+}
+
+function requestPluginStop(id)
+{
+	sendToHyperion("plugin", "stop", '"id":"'+id+'"');
+}
+
+function requestPluginAutoUpdate(id,state)
+{
+	sendToHyperion("plugin", "autoupdate", '"id":"'+id+'", "state":'+state);
+}
+
+function requestPluginInstall(id)
+{
+	sendToHyperion("plugin", "install", '"id":"'+id+'"');
+}
+
+function requestPluginDelete(id)
+{
+	sendToHyperion("plugin", "remove", '"id":"'+id+'"');
+}
+
+function requestPluginRepoUpdate()
+{
+	sendToHyperion("plugin", "updateavail");
+}
+
+function requestPluginSave(id, data)
+{
+	sendToHyperion("plugin", "save", '"id":"'+id+'","data":'+JSON.stringify(data));
 }
 
 function requestLedColorsStart()
