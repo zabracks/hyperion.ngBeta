@@ -60,6 +60,7 @@ void Files::replyReceived(bool success, int type, QString id, QByteArray data)
 	{
 		if(id == "P_AVAIL")
 		{
+			Error(_log,"Failed to download plugin repository");
 			emit pluginAction(P_UPDATED_AVAIL, id, false);
 		}
 		else
@@ -360,6 +361,14 @@ bool Files::updateInstalledPlugin(const QString& tid, const bool& skipStart)
 	QString entryPy("/lib");
 	QJsonObject settingsSchemaObj;
 	QJsonObject settingsObj;
+
+	// compare provided id(eg. folder name) with meta id
+	if(tid != id)
+	{
+		Error(_log, "The plugin folder name (%s) does not match the provided plugin.json id (%s)", QSTRING_CSTR(tid), QSTRING_CSTR(id));
+		return false;
+	}
+
 	if(id.startsWith("service."))
 	{
 		// get the settingsSchema.json

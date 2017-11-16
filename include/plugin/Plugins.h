@@ -57,7 +57,7 @@ private:
 	PyThreadState* _mainThreadState;
 
 	/// start or restart a plugin
-
+	void start(QString id);
 
 	/// stop a plugin by id, with remove flag, returns false if plugin is not running
 	bool stop(const QString& id, const bool& remove = false) const;
@@ -74,7 +74,4 @@ private slots:
 
 	/// is called when a plugin thread exits
 	void pluginFinished();
-
-
-	void start(QString id="service.kodi");
 };

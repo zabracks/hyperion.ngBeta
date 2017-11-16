@@ -62,9 +62,9 @@ private:
 	QString _configDir;
 
 	/// repo url
-	const QString _rUrl = "https://raw.githubusercontent.com/brindosch/plugins/master/plugins.json";
+	const QString _rUrl = "https://api.hyperion-project.org/redir.php?plugin_repo=true";
 	/// download dir url
-	const QString _dUrl = "https://raw.githubusercontent.com/brindosch/plugins/master/";
+	const QString _dUrl = "https://api.hyperion-project.org/redir.php?plugin=";
 
 	/// List of installed plugins <id,definition>
 	QMap<QString, PluginDefinition> _installedPlugins;

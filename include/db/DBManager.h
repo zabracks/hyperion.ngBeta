@@ -96,15 +96,15 @@ public:
 
 	///
 	/// @brief Check if table exists in current database
-	/// @param[in]  table   The column name of the table
-	/// @return              True on success else false
+	/// @param[in]  table   The name of the table
+	/// @return             True on success else false
 	///
 	bool tableExists(const QString& table) const;
 
 	///
 	/// @brief Delete a table, fails silent (return true) if table is not found
-	/// @param[in]  table   The column name of the table
-	/// @return              True on success else false
+	/// @param[in]  table   The name of the table
+	/// @return             True on success else false
 	///
 	bool deleteTable(const QString& table) const;
 
