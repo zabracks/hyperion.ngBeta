@@ -4,6 +4,7 @@
 
 // qt include
 #include <QDebug>
+#include <QStringList>
 
 // py path seperator
 #ifdef TARGET_WINDOWS

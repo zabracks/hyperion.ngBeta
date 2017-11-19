@@ -12,6 +12,8 @@
 // qt incl
 #include <QThread>
 
+class QStringList;
+
 class Plugin : public QThread
 {
 	Q_OBJECT
