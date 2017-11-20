@@ -218,7 +218,7 @@ function requestPriorityClear(prio)
 
 function requestClearAll()
 {
-	sendToHyperion("clearall");
+	requestPriorityClear(-1)
 }
 
 function requestPlayEffect(effectName, duration)
