@@ -7,7 +7,7 @@ class QTcpSocket;
 
 class QtHttpRequest;
 class Hyperion;
-class JsonProcessor;
+class JsonAPI;
 
 class WebSocketClient : public QObject {
 	Q_OBJECT
@@ -27,7 +27,7 @@ private:
 	QTcpSocket* _socket;
 	Logger* _log;
 	Hyperion* _hyperion;
-	JsonProcessor* _jsonProcessor;
+	JsonAPI* _jsonAPI;
 
 	void getWsFrameHeader(WebSocketHeader* header);
 	void sendClose(int status, QString reason = "");

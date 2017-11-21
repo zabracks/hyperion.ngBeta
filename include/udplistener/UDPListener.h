@@ -4,16 +4,17 @@
 #include <cstdint>
 
 // Qt includes
-#include <QUdpSocket>
 #include <QSet>
 #include <QHostAddress>
 
 // Hyperion includes
-#include <hyperion/Hyperion.h>
 #include <utils/Logger.h>
 #include <utils/Components.h>
 
+class Hyperion;
 class UDPClientConnection;
+class BonjourServiceRegister;
+class QUdpSocket;
 
 ///
 /// This class creates a UDP server which accepts connections from boblight clients.
@@ -28,35 +29,31 @@ public:
 	/// @param hyperion Hyperion instance
 	/// @param port port number on which to start listening for connections
 	///
-	UDPListener(const int priority, const int timeout, const QString& address, quint16 listenPort, bool shared);
+	UDPListener(const QJsonObject& config);
 	~UDPListener();
 
 	///
 	/// @return the port number on which this UDP listens for incoming connections
 	///
 	uint16_t getPort() const;
-	
+
 	///
 	/// @return true if server is active (bind to a port)
 	///
 	bool active() { return _isActive; };
-	bool componentState() { return active(); };
 
 public slots:
 	///
 	/// bind server to network
 	///
 	void start();
-	
+
 	///
 	/// close server
 	///
 	void stop();
 
 	void componentStateChanged(const hyperion::Components component, bool enable);
-
-signals:
-	void statusChanged(bool isActive);
 
 private slots:
 	///
@@ -83,12 +80,17 @@ private:
 
 	/// Logger instance
 	Logger * _log;
-	
+
+	/// Bonjour Service Register
+	BonjourServiceRegister* _bonjourService = nullptr;
+
 	/// state of connection
 	bool _isActive;
-	
+
 	/// address to bind
 	QHostAddress              _listenAddress;
-	quint16                   _listenPort;
+	uint16_t                  _listenPort;
 	QAbstractSocket::BindFlag _bondage;
+
+	void handleSettingsUpdate(const QJsonObject& obj);
 };

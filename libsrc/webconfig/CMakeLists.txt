@@ -21,5 +21,6 @@ add_library(webconfig
 target_link_libraries(webconfig
 	hyperion
 	hyperion-utils
+	hyperion-api
 	Qt5::Network
 )

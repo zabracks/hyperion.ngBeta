@@ -14,6 +14,7 @@
 // Utils includes
 #include <utils/ColorRgb.h>
 #include <utils/Components.h>
+#include <utils/Event.h>
 
 // global defines
 #define SMOOTHING_MODE_DEFAULT 0
@@ -133,6 +134,10 @@ signals:
 	/// Signal which is called, when a effect or color with timeout is running, once per second
 	///
 	void timerunner();
+	///
+	///	Signal emits whenever a change in priority muxer happens
+	///
+	void newEvent(Event);
 
 private slots:
 	///

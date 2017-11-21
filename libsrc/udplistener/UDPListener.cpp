@@ -1,33 +1,37 @@
 // project includes
 #include <udplistener/UDPListener.h>
 
+// hyperion includes
+#include <hyperion/Hyperion.h>
+#include <bonjour/bonjourserviceregister.h>
+
 // hyperion util includes
 #include "hyperion/ImageProcessorFactory.h"
 #include "hyperion/ImageProcessor.h"
 #include "utils/ColorRgb.h"
 #include "HyperionConfig.h"
 
+// qt includes
+#include <QUdpSocket>
+
 using namespace hyperion;
 
-UDPListener::UDPListener(const int priority, const int timeout, const QString& address, quint16 listenPort, bool shared) :
+UDPListener::UDPListener(const QJsonObject& config/*const int priority, const int timeout, const QString& address, quint16 listenPort, bool shared*/) :
 	QObject(),
 	_hyperion(Hyperion::getInstance()),
-	_server(),
+	_server(new QUdpSocket(this)),
 	_openConnections(),
-	_priority(priority),
-	_timeout(timeout),
+	_priority(0),
+	_timeout(0),
 	_log(Logger::getInstance("UDPLISTENER")),
 	_isActive(false),
-	_listenPort(listenPort),
-	_bondage(shared ? QAbstractSocket::ShareAddress : QAbstractSocket::DefaultForPlatform)
+	_listenPort(0)
 {
-	_server = new QUdpSocket(this);
-	_listenAddress = address.isEmpty()? QHostAddress::AnyIPv4 : QHostAddress(address);
+	Debug(_log, "UDP listener created");
+	handleSettingsUpdate(config);
 
 	// Set trigger for incoming connections
 	connect(_server, SIGNAL(readyRead()), this, SLOT(readPendingDatagrams()));
-
-	_hyperion->registerPriority("UDPLISTENER", _priority);
 }
 
 UDPListener::~UDPListener()
@@ -62,7 +66,14 @@ void UDPListener::start()
 			WarningIf( ! joinGroupOK, _log, "Multicast failed");
 		}
 		_isActive = true;
-		emit statusChanged(_isActive);
+		_hyperion->registerPriority("UDPLISTENER", _priority);
+		_hyperion->getComponentRegister().componentStateChanged(COMP_UDPLISTENER, _isActive);
+
+		if(_bonjourService == nullptr)
+		{
+			_bonjourService = new BonjourServiceRegister();
+			_bonjourService->registerService("_hyperiond-udp._udp", _listenPort);
+		}
 	}
 }
 
@@ -73,7 +84,8 @@ void UDPListener::stop()
 
 	_server->close();
 	_isActive = false;
-	emit statusChanged(_isActive);
+	_hyperion->unRegisterPriority("UDPLISTENER");
+	_hyperion->getComponentRegister().componentStateChanged(COMP_UDPLISTENER, _isActive);
 }
 
 void UDPListener::componentStateChanged(const hyperion::Components component, bool enable)
@@ -86,7 +98,6 @@ void UDPListener::componentStateChanged(const hyperion::Components component, bo
 			else        stop();
 			Info(_log, "change state to %s", (enable ? "enabled" : "disabled") );
 		}
-		_hyperion->getComponentRegister().componentStateChanged(component, enable);
 	}
 }
 
@@ -130,5 +141,14 @@ void UDPListener::processTheDatagram(const QByteArray * datagram, const QHostAdd
 	_hyperion->setColors(_priority, _ledColors, _timeout, -1, hyperion::COMP_UDPLISTENER, sender->toString());
 }
 
-
-
+void UDPListener::handleSettingsUpdate(const QJsonObject& obj)
+{
+	QString addr = obj["address"].toString("");
+	_priority = obj["priority"].toInt();
+	_timeout = obj["timeout"].toInt(10000);
+	_listenAddress = addr.isEmpty()? QHostAddress::AnyIPv4 : QHostAddress(addr);
+	_bondage = (obj["shared"].toBool(false)) ? QAbstractSocket::ShareAddress : QAbstractSocket::DefaultForPlatform;
+	stop();
+	if(obj["enable"].toBool())
+		start();
+}

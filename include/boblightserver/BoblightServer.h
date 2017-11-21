@@ -8,11 +8,12 @@
 #include <QSet>
 
 // Hyperion includes
-#include <hyperion/Hyperion.h>
 #include <utils/Logger.h>
 #include <utils/Components.h>
 
 class BoblightClientConnection;
+class BonjourServiceRegister;
+class Hyperion;
 
 ///
 /// This class creates a TCP server which accepts connections from boblight clients.
@@ -27,34 +28,30 @@ public:
 	/// @param hyperion Hyperion instance
 	/// @param port port number on which to start listening for connections
 	///
-	BoblightServer(const int priority, uint16_t port = 19333);
+	BoblightServer(const QJsonObject& config);
 	~BoblightServer();
 
 	///
 	/// @return the port number on which this TCP listens for incoming connections
 	///
 	uint16_t getPort() const;
-	
+
 	/// @return true if server is active (bind to a port)
 	///
 	bool active() { return _isActive; };
-	bool componentState() { return active(); };
 
 public slots:
 	///
 	/// bind server to network
 	///
 	void start();
-	
+
 	///
 	/// close server
 	///
 	void stop();
 
 	void componentStateChanged(const hyperion::Components component, bool enable);
-
-signals:
-	void statusChanged(bool isActive);
 
 private slots:
 	///
@@ -79,7 +76,7 @@ private:
 	QSet<BoblightClientConnection *> _openConnections;
 
 	/// hyperion priority
-	const int _priority;
+	int _priority;
 
 	/// Logger instance
 	Logger * _log;
@@ -88,4 +85,9 @@ private:
 	bool _isActive;
 
 	uint16_t  _port;
+
+	/// Bonjour Service Register
+	BonjourServiceRegister* _bonjourService = nullptr;
+
+	void handleSettingsUpdate(const QJsonObject& obj);
 };

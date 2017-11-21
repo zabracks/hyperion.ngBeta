@@ -3,7 +3,7 @@
 #include "QtHttpHeader.h"
 
 #include <hyperion/Hyperion.h>
-#include <utils/JsonProcessor.h>
+#include <api/JsonAPI.h>
 
 #include <QTcpSocket>
 #include <QtEndian>
@@ -23,8 +23,8 @@ WebSocketClient::WebSocketClient(QtHttpRequest* request, QTcpSocket* sock, QObje
 	const QString client = request->getClientInfo().clientAddress.toString();
 
 	// Json processor
-	_jsonProcessor = new JsonProcessor(client, _log, this);
-	connect(_jsonProcessor, &JsonProcessor::callbackMessage, this, &WebSocketClient::sendMessage);
+	_jsonAPI = new JsonAPI(client, _log, this);
+	connect(_jsonAPI, &JsonAPI::callbackMessage, this, &WebSocketClient::sendMessage);
 
 	Debug(_log, "New connection from %s", QSTRING_CSTR(client));
 
@@ -112,7 +112,7 @@ void WebSocketClient::handleWebSocketFrame(void)
 				_onContinuation = false;
 				if (_wsh.opCode == OPCODE::TEXT)
 				{
-					_jsonProcessor->handleMessage(QString(_wsReceiveBuffer));
+					_jsonAPI->handleMessage(QString(_wsReceiveBuffer));
 				}
 				else
 				{

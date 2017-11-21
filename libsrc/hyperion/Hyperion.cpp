@@ -609,7 +609,7 @@ void Hyperion::checkConfigState(QString cfile)
 	}
 }
 
-void Hyperion::registerPriority(const QString &name, const int priority/*, const QString &origin*/)
+void Hyperion::registerPriority(const QString &name, const int priority)
 {
 	Info(_log, "Register new input source named '%s' for priority channel '%d'", QSTRING_CSTR(name), priority );
 

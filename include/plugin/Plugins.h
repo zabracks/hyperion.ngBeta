@@ -67,7 +67,7 @@ private:
 	QStringList _restartQueue;
 
 public slots:
-	/// is called from JsonProcessor
+	/// is called from JsonAPI
 	void doPluginAction(PluginAction action, QString id, bool success = true, PluginDefinition def = PluginDefinition());
 
 private slots:

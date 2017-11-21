@@ -31,6 +31,9 @@
 #include <utils/Process.h>
 #include <utils/JsonUtils.h>
 
+// plugin
+#include <plugin/Plugins.h>
+
 using namespace hyperion;
 
 std::map<hyperion::Components, bool> JsonAPI::_componentsPrevState;
@@ -54,6 +57,13 @@ JsonAPI::JsonAPI(QString peerAddress, Logger* log, QObject* parent, bool noListe
 		// listen for sendServerInfo pushes from hyperion
 		connect(_hyperion, &Hyperion::sendServerInfo, this, &JsonAPI::forceServerInfo);
 	}
+
+	// connect to plugin
+	_plugins = _hyperion->getPluginsInstance();
+	// from Plugins
+	connect(_plugins, &Plugins::pluginAction, this, &JsonAPI::doPluginAction);
+	// to Plugins
+	connect(this, &JsonAPI::pluginAction, _plugins, &Plugins::doPluginAction);
 
 	// led color stream update timer
 	_timer_ledcolors.setSingleShot(false);
@@ -106,6 +116,8 @@ void JsonAPI::handleMessage(const QString& messageString)
 	else if (command == "logging")        handleLoggingCommand       (message, command, tan);
 	else if (command == "processing")     handleProcessingCommand    (message, command, tan);
 	else if (command == "videomode")      handleVideoModeCommand     (message, command, tan);
+	else if (command == "management")     handleManagementCommand    (message, command, tan);
+	else if (command == "plugin")         handlePluginCommand        (message, command, tan);
 	else                                  handleNotImplemented       ();
 }
 
@@ -338,7 +350,7 @@ void JsonAPI::handleSysInfoCommand(const QJsonObject&, const QString& command, c
 	hyperion["version"         ] = QString(HYPERION_VERSION);
 	hyperion["build"           ] = QString(HYPERION_BUILD_ID);
 	hyperion["time"            ] = QString(__DATE__ " " __TIME__);
-	hyperion["id"              ] = _hyperion->id;
+	hyperion["id"              ] = _hyperion->getId();
 	info["hyperion"] = hyperion;
 
 	// send the result
@@ -348,12 +360,6 @@ void JsonAPI::handleSysInfoCommand(const QJsonObject&, const QString& command, c
 
 void JsonAPI::handleServerInfoCommand(const QJsonObject&, const QString& command, const int tan)
 {
-	// create result
-	QJsonObject result;
-	result["success"] = true;
-	result["command"] = command;
-	result["tan"] = tan;
-
 	QJsonObject info;
 
 	// collect priority information
@@ -601,9 +607,7 @@ void JsonAPI::handleServerInfoCommand(const QJsonObject&, const QString& command
 
 	info["hyperion"] = hyperion;
 
-	// send the result
-	result["info"] = info;
-	emit callbackMessage(result);
+	sendSuccessDataReply(info, command, tan);
 }
 
 void JsonAPI::handleClearCommand(const QJsonObject& message, const QString& command, const int tan)
@@ -755,7 +759,7 @@ void JsonAPI::handleConfigCommand(const QJsonObject& message, const QString& com
 	}
 	else if (subcommand == "getconfig")
 	{
-		handleConfigGetCommand(message, full_command, tan);
+		sendSuccessDataReply(_hyperion->getQJsonConfig(), full_command, tan);
 	}
 	else if (subcommand == "reload")
 	{
@@ -771,86 +775,62 @@ void JsonAPI::handleConfigCommand(const QJsonObject& message, const QString& com
 
 void JsonAPI::handleConfigSetCommand(const QJsonObject& message, const QString &command, const int tan)
 {
-	if(message.size() > 0)
+	if (message.contains("config"))
 	{
-		if (message.contains("config"))
+		QJsonObject hyperionConfigJsonObj = message["config"].toObject();
+		try
 		{
-			QJsonObject hyperionConfigJsonObj = message["config"].toObject();
-			try
+			Q_INIT_RESOURCE(resource);
+
+			QJsonObject schemaJson = QJsonFactory::readSchema(":/hyperion-schema");
+
+			QJsonSchemaChecker schemaChecker;
+			schemaChecker.setSchema(schemaJson);
+
+			QPair<bool, bool> validate = schemaChecker.validate(hyperionConfigJsonObj);
+
+			if (validate.first && validate.second)
 			{
-				Q_INIT_RESOURCE(resource);
-
-				QJsonObject schemaJson = QJsonFactory::readSchema(":/hyperion-schema");
-
-				QJsonSchemaChecker schemaChecker;
-				schemaChecker.setSchema(schemaJson);
-
-				QPair<bool, bool> validate = schemaChecker.validate(hyperionConfigJsonObj);
-
-				if (validate.first && validate.second)
-				{
-					QJsonFactory::writeJson(_hyperion->getConfigFileName(), hyperionConfigJsonObj);
-				}
-				else if (!validate.first && validate.second)
-				{
-					Warning(_log,"Errors have been found in the configuration file. Automatic correction is applied");
-
-					QStringList schemaErrors = schemaChecker.getMessages();
-					for (auto & schemaError : schemaErrors)
-						Info(_log, QSTRING_CSTR(schemaError));
-
-					hyperionConfigJsonObj = schemaChecker.getAutoCorrectedConfig(hyperionConfigJsonObj);
-
-					if (!QJsonFactory::writeJson(_hyperion->getConfigFileName(), hyperionConfigJsonObj))
-						throw std::runtime_error("ERROR: can not save configuration file, aborting");
-				}
-				else //Error in Schema
-				{
-					QString errorMsg = "ERROR: Json validation failed: \n";
-					QStringList schemaErrors = schemaChecker.getMessages();
-					for (auto & schemaError: schemaErrors)
-					{
-						Error(_log, "config write validation: %s", QSTRING_CSTR(schemaError));
-						errorMsg += schemaError + "\n";
-					}
-
-					throw std::runtime_error(errorMsg.toStdString());
-				}
-				sendSuccessReply(command, tan);
+				QJsonFactory::writeJson(_hyperion->getConfigFileName(), hyperionConfigJsonObj);
 			}
-			catch(const std::runtime_error& validate_error)
+			else if (!validate.first && validate.second)
 			{
-				sendErrorReply("Error while validating json: " + QString(validate_error.what()), command, tan);
+				Warning(_log,"Errors have been found in the configuration file. Automatic correction is applied");
+
+				QStringList schemaErrors = schemaChecker.getMessages();
+				for (auto & schemaError : schemaErrors)
+					Info(_log, QSTRING_CSTR(schemaError));
+
+				hyperionConfigJsonObj = schemaChecker.getAutoCorrectedConfig(hyperionConfigJsonObj);
+
+				if (!QJsonFactory::writeJson(_hyperion->getConfigFilePath(), hyperionConfigJsonObj))
+					throw std::runtime_error("ERROR: can not save configuration file, aborting");
 			}
+			else //Error in Schema
+			{
+				QString errorMsg = "ERROR: Json validation failed: \n";
+				QStringList schemaErrors = schemaChecker.getMessages();
+				for (auto & schemaError: schemaErrors)
+				{
+					Error(_log, "config write validation: %s", QSTRING_CSTR(schemaError));
+					errorMsg += schemaError + "\n";
+				}
+
+				throw std::runtime_error(errorMsg.toStdString());
+			}
+			sendSuccessReply(command, tan);
+		}
+		catch(const std::runtime_error& validate_error)
+		{
+			sendErrorReply("Error while validating json: " + QString(validate_error.what()), command, tan);
 		}
 	}
-	else
-	{
-		sendErrorReply("Error while parsing json: Message size " + QString(message.size()), command, tan);
-	}
-}
-
-void JsonAPI::handleConfigGetCommand(const QJsonObject& message, const QString& command, const int tan)
-{
-	// create result
-	QJsonObject result;
-	result["success"] = true;
-	result["command"] = command;
-	result["tan"] = tan;
-
-	result["result"] = _hyperion->getQJsonConfig();
-
-	// send the result
-	emit callbackMessage(result);
 }
 
 void JsonAPI::handleSchemaGetCommand(const QJsonObject& message, const QString& command, const int tan)
 {
 	// create result
-	QJsonObject result, schemaJson, alldevices, properties;
-	result["success"] = true;
-	result["command"] = command;
-	result["tan"] = tan;
+	QJsonObject schemaJson, alldevices, properties;
 
 	// make sure the resources are loaded (they may be left out after static linking)
 	Q_INIT_RESOURCE(resource);
@@ -906,10 +886,8 @@ void JsonAPI::handleSchemaGetCommand(const QJsonObject& message, const QString& 
 
 	schemaJson.insert("properties", properties);
 
-	result["result"] = schemaJson;
-
 	// send the result
-	emit callbackMessage(result);
+	sendSuccessDataReply(schemaJson, command, tan);
 }
 
 void JsonAPI::handleComponentStateCommand(const QJsonObject& message, const QString &command, const int tan)
@@ -1050,6 +1028,232 @@ void JsonAPI::handleVideoModeCommand(const QJsonObject& message, const QString &
 	sendSuccessReply(command, tan);
 }
 
+void JsonAPI::handleManagementCommand(const QJsonObject& message, const QString &command, const int tan)
+{
+	const QString& subc = message["subcommand"].toString();
+	if(subc.contains("plugins"))
+	{
+		_managePlugins = true;
+		sendSuccessReply(command+"-"+subc, tan);
+		return;
+	}
+	sendErrorReply("Not implemented", command+"-"+subc, tan);
+}
+
+void JsonAPI::handlePluginCommand(const QJsonObject& message, const QString &command, const int tan)
+{
+	const QString& subc = message["subcommand"].toString();
+	const QString full_command = command+"-"+subc;
+	const QString& id = message["id"].toString();
+	const bool& state = message["state"].toBool();
+
+	// some actions are just available with management
+	QStringList restrC;
+	restrC << "install" << "remove" << "autoupdate" << "save" << "getInitData" << "updateavail";
+	if(restrC.contains(subc) && !_managePlugins)
+	{
+		sendErrorReply("No authorization", command+"-"+subc, tan);
+		return;
+	}
+
+	if(subc == "getInitData")
+	{
+		QJsonObject result;
+		QJsonObject obj;
+		const QMap<QString, PluginDefinition> availP = _plugins->getAvailablePlugins();
+		const QMap<QString, PluginDefinition> instP = _plugins->getInstalledPlugins();
+		QMap<QString, PluginDefinition>::const_iterator i = instP.constBegin();
+		while (i != instP.constEnd()) {
+
+			QJsonObject data;
+			const PluginDefinition def = i.value();
+			data["name"] = def.name;
+			data["description"] = def.description;
+			data["version"] = def.version;
+			data["dependencies"] = def.dependencies;
+			data["changelog"] = def.changelog;
+			data["provider"] = def.provider;
+			data["support"] = def.support;
+			data["source"] = def.source;
+			data["settingsSchema"] = def.settingsSchema;
+			data["settings"] = def.settings;
+			data["running"] = _plugins->isPluginRunning(i.key());
+			data["autoupdate"] = _plugins->isPluginAutoUpdateEnabled(i.key());
+			obj[i.key()] = data;
+
+			++i;
+		}
+		result["installedPlugins"] = obj;
+		QJsonObject obj2;
+
+		QMap<QString, PluginDefinition>::const_iterator ix = availP.constBegin();
+		while (ix != availP.constEnd()) {
+
+			QJsonObject data;
+			const PluginDefinition def = ix.value();
+			data["name"] = def.name;
+			data["description"] = def.description;
+			data["version"] = def.version;
+			data["dependencies"] = def.dependencies;
+			data["changelog"] = def.changelog;
+			data["provider"] = def.provider;
+			data["support"] = def.support;
+			data["source"] = def.source;
+			obj2[ix.key()] = data;
+
+			++ix;
+		}
+		result["availablePlugins"] = obj2;
+		sendSuccessDataReply(result, full_command, tan);
+	}
+	else if(subc == "getPlugins")
+	{
+		QJsonObject result;
+
+		const QMap<QString, PluginDefinition> instPlugins = _plugins->getInstalledPlugins();
+		QMap<QString, PluginDefinition>::const_iterator iy = instPlugins.constBegin();
+		while (iy != instPlugins.constEnd()) {
+
+			QJsonObject data;
+			const PluginDefinition def = iy.value();
+			data["name"] = def.name;
+			data["description"] = def.description;
+			data["version"] = def.version;
+			result[iy.key()] = data;
+
+			++iy;
+		}
+		sendSuccessDataReply(result, full_command, tan);
+	}
+	else if(subc == "start")
+	{
+		emit pluginAction(P_START, id);
+	}
+	else if(subc == "stop")
+	{
+		emit pluginAction(P_STOP, id);
+	}
+	else if(subc == "install")
+	{
+		emit pluginAction(P_INSTALL, id);
+	}
+	else if(subc == "remove")
+	{
+		emit pluginAction(P_REMOVE, id);
+	}
+	else if(subc == "autoupdate")
+	{
+		emit pluginAction(P_AUTOUPDATE, id, state);
+	}
+	else if(subc == "save")
+	{
+		const QJsonObject& data = message["data"].toObject();
+		PluginDefinition newDef;
+		newDef.settings = data;
+		emit pluginAction(P_SAVE, id, true, newDef);
+	}
+	else if(subc == "updateavail")
+	{
+		emit pluginAction(P_UPD_AVAIL, id, state);
+	}
+	else
+	{
+		sendErrorReply("Not implemented", full_command, tan);
+	}
+}
+
+void JsonAPI::doPluginAction(PluginAction action, QString id, bool success, PluginDefinition def)
+{
+	QList<PluginAction> restrA;
+	restrA << P_SAVED << P_INSTALLED << P_REMOVED << P_AUTOUPDATED << P_UPDATED_AVAIL;
+	if(restrA.contains(action) && !_managePlugins)
+		return;
+
+	QJsonObject result;
+	QString cmd;
+	bool send = true;
+	result["success"] = success;
+	result["id"] = id;
+
+	QJsonObject data;
+
+	switch(action)
+	{
+		case P_STARTED:
+			cmd = "plugin-start";
+			break;
+		case P_STOPPED:
+			cmd = "plugin-stop";
+			break;
+		case P_ERROR:
+			cmd = "plugin-error"; // implicit stop, but crashed
+			break;
+		case P_INSTALLED:
+			cmd = "plugin-install";
+			if(success)
+			{
+				data["name"] = def.name;
+				data["description"] = def.description;
+				data["version"] = def.version;
+				data["dependencies"] = def.dependencies;
+				data["changelog"] = def.changelog;
+				data["provider"] = def.provider;
+				data["support"] = def.support;
+				data["source"] = def.source;
+				data["settingsSchema"] = def.settingsSchema;
+				data["settings"] = def.settings;
+				data["running"] = _plugins->isPluginRunning(id);
+				data["autoupdate"] = _plugins->isPluginAutoUpdateEnabled(id);
+
+				result["data"] = data;
+			}
+			break;
+		case P_REMOVED:
+			cmd = "plugin-remove";
+			break;
+		case P_SAVED:
+			cmd = "plugin-save";
+			result["data"] = def.settings;
+			break;
+		case P_AUTOUPDATED:
+			cmd = "plugin-autoupdate";
+			break;
+		case P_UPDATED_AVAIL:
+			cmd = "plugin-updateavail";
+			if(success)
+			{
+				const QMap<QString, PluginDefinition> availP = _plugins->getAvailablePlugins();
+				QMap<QString, PluginDefinition>::const_iterator ix = availP.constBegin();
+				QJsonObject obj;
+				while (ix != availP.constEnd()) {
+					QJsonObject data;
+					const PluginDefinition def = ix.value();
+					data["name"] = def.name;
+					data["description"] = def.description;
+					data["version"] = def.version;
+					data["dependencies"] = def.dependencies;
+					data["changelog"] = def.changelog;
+					data["provider"] = def.provider;
+					data["support"] = def.support;
+					data["source"] = def.source;
+					obj[ix.key()] = data;
+
+					++ix;
+				}
+				result["data"] = obj;
+			}
+			break;
+		default:
+			send = false;
+			break;
+	}
+
+	if(send)
+	{
+		sendSuccessDataReply(result, cmd);
+	}
+}
+
 void JsonAPI::handleNotImplemented()
 {
 	sendErrorReply("Command not implemented");
@@ -1068,11 +1272,22 @@ void JsonAPI::sendSuccessReply(const QString &command, const int tan)
 
 	// blacklisted commands for emitter
 	QVector<QString> vector;
-	vector << "ledcolors-imagestream-stop" << "ledcolors-imagestream-start" << "ledcolors-ledstream-stop" << "ledcolors-ledstream-start" << "logging-start" << "logging-stop";
+	vector << "ledcolors-imagestream-stop" << "ledcolors-imagestream-start" << "ledcolors-ledstream-stop" << "ledcolors-ledstream-start" << "logging-start" << "logging-stop" << "management-plugins";
 	if(vector.indexOf(command) == -1)
 	{
 		emit pushReq();
 	}
+}
+
+void JsonAPI::sendSuccessDataReply(const QJsonObject &data, const QString &command, const int &tan)
+{
+	QJsonObject reply;
+	reply["success"] = true;
+	reply["command"] = command;
+	reply["tan"] = tan;
+	reply["info"] = data;
+
+	emit callbackMessage(reply);
 }
 
 void JsonAPI::sendErrorReply(const QString &error, const QString &command, const int tan)

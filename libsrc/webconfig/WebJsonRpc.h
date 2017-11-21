@@ -5,7 +5,7 @@
 class QtHttpServer;
 class QtHttpRequest;
 class QtHttpClientWrapper;
-class JsonProcessor;
+class JsonAPI;
 
 class WebJsonRpc : public QObject {
 	Q_OBJECT
@@ -18,7 +18,7 @@ private:
 	QtHttpServer* _server;
 	QtHttpClientWrapper* _wrapper;
 	Logger* _log;
-	JsonProcessor* _jsonProcessor;
+	JsonAPI* _jsonAPI;
 
 	bool _unlocked = false;
 

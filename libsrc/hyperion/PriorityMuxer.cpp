@@ -6,6 +6,8 @@
 // Hyperion includes
 #include <hyperion/PriorityMuxer.h>
 
+#include <QDebug>
+
 const int PriorityMuxer::LOWEST_PRIORITY = std::numeric_limits<uint8_t>::max();
 
 PriorityMuxer::PriorityMuxer(int ledCount)
@@ -25,6 +27,7 @@ PriorityMuxer::PriorityMuxer(int ledCount)
 	connect(&_timer, SIGNAL(timeout()), this, SLOT(emitReq()));
 	_timer.setSingleShot(true);
 	_blockTimer.setSingleShot(true);
+
 }
 
 PriorityMuxer::~PriorityMuxer()
@@ -118,7 +121,7 @@ void PriorityMuxer::setCurrentTime(const int64_t& now)
 		else
 		{
 			_currentPriority = qMin(_currentPriority, infoIt->priority);
-			
+
 			// call emitReq when effect or color is running with timeout > -1, blacklist prio 255
 			if(infoIt->priority < 254 && infoIt->timeoutTime_ms > -1 && (infoIt->componentId == hyperion::COMP_EFFECT || infoIt->componentId == hyperion::COMP_COLOR))
 			{

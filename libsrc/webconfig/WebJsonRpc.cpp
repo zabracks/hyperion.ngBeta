@@ -4,7 +4,7 @@
 #include "QtHttpServer.h"
 #include "QtHttpClientWrapper.h"
 
-#include <utils/JsonProcessor.h>
+#include <api/JsonAPI.h>
 
 WebJsonRpc::WebJsonRpc(QtHttpRequest* request, QtHttpServer* server, QtHttpClientWrapper* parent)
 	: QObject(parent)
@@ -13,20 +13,20 @@ WebJsonRpc::WebJsonRpc(QtHttpRequest* request, QtHttpServer* server, QtHttpClien
 	, _log(Logger::getInstance("HTTPJSONRPC"))
 {
 	const QString client = request->getClientInfo().clientAddress.toString();
-	_jsonProcessor = new JsonProcessor(client, _log, this, true);
-	connect(_jsonProcessor, &JsonProcessor::callbackMessage, this, &WebJsonRpc::handleCallback);
+	_jsonAPI = new JsonAPI(client, _log, this, true);
+	connect(_jsonAPI, &JsonAPI::callbackMessage, this, &WebJsonRpc::handleCallback);
 }
 
 void WebJsonRpc::handleMessage(QtHttpRequest* request)
 {
 	QByteArray data = request->getRawData();
 	_unlocked = true;
-	_jsonProcessor->handleMessage(data);
+	_jsonAPI->handleMessage(data);
 }
 
 void WebJsonRpc::handleCallback(QJsonObject obj)
 {
-	// guard against wrong callbacks; TODO: Remove when JsonProcessor is more solid
+	// guard against wrong callbacks; TODO: Remove when JSONAPI is more solid
 	if(!_unlocked) return;
 	_unlocked = false;
 	// construct reply with headers timestamp and server name
