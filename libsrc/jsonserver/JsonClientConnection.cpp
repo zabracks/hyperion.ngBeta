@@ -1,7 +1,10 @@
 // project includes
 #include "JsonClientConnection.h"
 #include <api/JsonAPI.h>
+
+// qt inc
 #include <QTcpSocket>
+#include <QHostAddress>
 
 JsonClientConnection::JsonClientConnection(QTcpSocket *socket)
 	: QObject()

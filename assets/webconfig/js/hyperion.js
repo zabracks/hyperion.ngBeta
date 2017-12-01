@@ -25,6 +25,10 @@ var wSess = [];
 var plugins_installed = {};
 var plugins_available = {};
 
+//comps
+comps = [];
+compsInited = false;
+
 function initRestart()
 {
 	$(hyperion).off();
@@ -61,6 +65,7 @@ function connectionLostDetection(type)
 setInterval(connectionLostDetection, 3000);
 
 // init websocket to hyperion and bind socket events to jquery events of $(hyperion) object
+
 function initWebSocket()
 {
 	if ("WebSocket" in window)
@@ -68,8 +73,8 @@ function initWebSocket()
 		if (websocket == null)
 		{
 			jsonPort = (document.location.port == '') ? '80' : document.location.port;
-			websocket = new WebSocket('ws://'+document.location.hostname+":"+document.location.port);
-			console.log(jsonPort)
+			websocket = new WebSocket('ws://'+document.location.hostname+":"+jsonPort);
+
 			websocket.onopen = function (event) {
 				$(hyperion).trigger({type:"open"});
 
@@ -110,7 +115,7 @@ function initWebSocket()
 					response = JSON.parse(event.data);
 					success = response.success;
 					cmd = response.command;
-					if (success)
+					if (success || typeof(success) == "undefined")
 					{
 						$(hyperion).trigger({type:"cmd-"+cmd, response:response});
 					}
@@ -163,7 +168,7 @@ function sendToHyperion(command, subcommand, msg)
 // also used for watchdog
 function requestServerInfo()
 {
-	sendToHyperion("serverinfo");
+	sendToHyperion("serverinfo","",'"subscribe":["components-update","sessions-update"]');
 }
 
 function requestSysInfo()

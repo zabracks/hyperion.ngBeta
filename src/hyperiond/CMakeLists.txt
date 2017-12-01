@@ -15,7 +15,7 @@ target_link_libraries(hyperiond
 		boblightserver
 		udplistener
 		protoserver
-		webconfig
+		webserver
 		bonjour
 		database
 )

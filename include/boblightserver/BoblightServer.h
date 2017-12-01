@@ -4,7 +4,6 @@
 #include <cstdint>
 
 // Qt includes
-#include <QTcpServer>
 #include <QSet>
 
 // Hyperion includes
@@ -14,6 +13,7 @@
 class BoblightClientConnection;
 class BonjourServiceRegister;
 class Hyperion;
+class QTcpServer;
 
 ///
 /// This class creates a TCP server which accepts connections from boblight clients.
@@ -38,7 +38,7 @@ public:
 
 	/// @return true if server is active (bind to a port)
 	///
-	bool active() { return _isActive; };
+	bool active();
 
 public slots:
 	///
@@ -70,7 +70,7 @@ private:
 	Hyperion * _hyperion;
 
 	/// The TCP server object
-	QTcpServer _server;
+	QTcpServer * _server;
 
 	/// List with open connections
 	QSet<BoblightClientConnection *> _openConnections;
@@ -81,9 +81,7 @@ private:
 	/// Logger instance
 	Logger * _log;
 
-	/// state of connection
-	bool _isActive;
-
+	// current port
 	uint16_t  _port;
 
 	/// Bonjour Service Register

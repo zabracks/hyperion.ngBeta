@@ -48,6 +48,27 @@ function debugMessage(msg)
 	}
 }
 
+function updateSessions()
+{
+	var sess = serverInfo.sessions;
+	if (sess.length)
+	{
+		wSess = [];
+		for(var i = 0; i<sess.length; i++)
+		{
+			if(sess[i].type == "_hyperiond-http._tcp.")
+			{
+				wSess.push(sess[i]);
+			}
+		}
+
+		if (wSess.length > 1)
+			$('#btn_instanceswitch').toggle(true);
+		else
+			$('#btn_instanceswitch').toggle(false);
+	}
+}
+
 function validateDuration(d)
 {
 	if(typeof d === "undefined" || d < 0)

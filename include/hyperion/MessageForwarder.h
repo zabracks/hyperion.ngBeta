@@ -10,9 +10,14 @@
 #include <QList>
 #include <QStringList>
 #include <QHostAddress>
+#include <QJsonObject>
+#include <QJsonArray>
 
 // Utils includes
 #include <utils/ColorRgb.h>
+
+class Hyperion;
+
 class MessageForwarder
 {
 public:
@@ -22,9 +27,9 @@ public:
 		quint16 port;
 	};
 
-	MessageForwarder();
+	MessageForwarder(Hyperion* hyperion, const QJsonObject & config);
 	~MessageForwarder();
-	
+
 	void addJsonSlave(QString slave);
 	void addProtoSlave(QString slave);
 

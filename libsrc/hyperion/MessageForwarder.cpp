@@ -3,9 +3,35 @@
 
 #include <hyperion/MessageForwarder.h>
 
+#include <utils/Logger.h>
+#include <hyperion/Hyperion.h>
 
-MessageForwarder::MessageForwarder()
+MessageForwarder::MessageForwarder(Hyperion* hyperion, const QJsonObject & config)
 {
+	if ( !config.isEmpty() && config["enable"].toBool(true) )
+	{
+		if ( !config["json"].isNull() && config["json"].isArray() )
+		{
+			const QJsonArray & addr = config["json"].toArray();
+			for (signed i = 0; i < addr.size(); ++i)
+			{
+				Info(Logger::getInstance("Core"), "Json forward to %s", addr.at(i).toString().toStdString().c_str());
+				addJsonSlave(addr[i].toString());
+			}
+		}
+
+		if ( !config["proto"].isNull() && config["proto"].isArray() )
+		{
+			const QJsonArray & addr = config["proto"].toArray();
+			for (signed i = 0; i < addr.size(); ++i)
+			{
+				Info(Logger::getInstance("Core"), "Proto forward to %s", addr.at(i).toString().toStdString().c_str());
+				addProtoSlave(addr[i].toString());
+			}
+		}
+	}
+	// set initial state
+	hyperion->getComponentRegister().componentStateChanged(hyperion::COMP_FORWARDER, config["enable"].toBool(true));
 }
 
 MessageForwarder::~MessageForwarder()

@@ -4,7 +4,6 @@
 // Leddevice includes
 #include <leddevice/LedDevice.h>
 
-
 ///
 /// The LedDeviceFactory is responsible for constructing 'LedDevices'
 ///

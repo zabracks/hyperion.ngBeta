@@ -38,6 +38,7 @@ struct find_effect: std::unary_function<EffectDefinition, bool>
 };
 
 class ImageProcessor;
+class JsonCB;
 
 class JsonAPI : public QObject
 {
@@ -80,6 +81,9 @@ private slots:
 	/// process plugin actions from Plugins
 	void doPluginAction(PluginAction action, QString id, bool success, PluginDefinition def);
 
+	// helper slot to pipe jsonCB callback to the parent client
+	//void forwardJsonCB(QJsonObject obj){ emit callbackMessage(obj); };
+
 signals:
 	///
 	/// Signal which is emitted when a sendSuccessReply() has been executed
@@ -101,6 +105,10 @@ signals:
 	void pluginAction(PluginAction action, QString id, bool success = true, PluginDefinition def = PluginDefinition());
 
 private:
+	// The JsonCB instance which handles data subscription/notifications
+	JsonCB* _jsonCB;
+	// true if further callbacks are forbidden (http)
+	bool _noListener;
     /// The peer address of the client
     QString _peerAddress;
 
@@ -112,12 +120,6 @@ private:
 
 	/// The processor for translating images to led-values
 	ImageProcessor * _imageProcessor;
-
-    /// holds the state before off state
-    static std::map<hyperion::Components, bool> _componentsPrevState;
-
-	/// returns if hyperion is on or off
-	inline bool hyperionIsActive() { return JsonAPI::_componentsPrevState.empty(); };
 
 	/// timer for ledcolors streaming
 	QTimer _timer_ledcolors;

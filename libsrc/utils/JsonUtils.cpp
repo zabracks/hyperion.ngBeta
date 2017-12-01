@@ -9,8 +9,6 @@
 #include <QJsonObject>
 #include <QJsonParseError>
 
-#include <QDebug>
-
 namespace JsonUtils {
 
 	bool readFile(const QString& path, QJsonObject& obj, Logger* log, bool ignError)
@@ -147,7 +145,7 @@ namespace JsonUtils {
 				obj.insert(attribute, resolveRefs(attributeValue.toObject(), obj, log));
 			else
 			{
-				qDebug() <<"ADD ATTR:VALUE"<<attribute<<attributeValue;
+				//qDebug() <<"ADD ATTR:VALUE"<<attribute<<attributeValue;
 				obj.insert(attribute, attributeValue);
 			}
 		}

@@ -27,7 +27,6 @@
 #include <hyperion/LedString.h>
 #include <hyperion/PriorityMuxer.h>
 #include <hyperion/ColorAdjustment.h>
-#include <hyperion/MessageForwarder.h>
 #include <hyperion/ComponentRegister.h>
 
 // Effect engine includes
@@ -35,11 +34,15 @@
 #include <effectengine/ActiveEffectDefinition.h>
 #include <effectengine/EffectSchema.h>
 
-// bonjour includes
-#include <bonjour/bonjourservicebrowser.h>
-#include <bonjour/bonjourserviceresolver.h>
+// bonjour
+#include <bonjour/bonjourrecord.h>
+
+// settings utils
+#include <utils/settings.h>
 
 // Forward class declaration
+class HyperionDaemon;
+class MessageForwarder;
 class LedDevice;
 class LinearColorSmoothing;
 class RgbTransform;
@@ -47,6 +50,8 @@ class EffectEngine;
 class RgbChannelAdjustment;
 class MultiColorAdjustment;
 class Plugins;
+class BonjourBrowserWrapper;
+class SettingsManager;
 
 ///
 /// The main class of Hyperion. This gives other 'users' access to the attached LedDevice through
@@ -59,7 +64,6 @@ public:
 	///  Type definition of the info structure used by the priority muxer
 	typedef PriorityMuxer::InputInfo InputInfo;
 	typedef QMap<QString,int> PriorityRegister;
-	typedef QMap<QString,BonjourRecord>  BonjourRegister;
 	///
 	/// RGB-Color channel enumeration
 	///
@@ -80,11 +84,13 @@ public:
 
 	///
 	/// @brief creates a new Hyperion instance, usually called from the Hyperion Daemon
+	/// @param[in] daemon        The Hyperion daemon parent
+	/// @param[in] instance      The instance id
 	/// @param[in] qjsonConfig   The configuration file
 	/// @param[in] rootPath      Root path of all hyperion userdata
 	/// @return                  Hyperion instance pointer
 	///
-	static Hyperion* initInstance(const QJsonObject& qjsonConfig, const QString configFile, const QString rootPath);
+	static Hyperion* initInstance(HyperionDaemon* daemon, const quint8& instance, const QJsonObject& qjsonConfig, const QString configFile, const QString rootPath);
 
 	///
 	/// @brief Get a pointer of this Hyperion instance
@@ -104,6 +110,27 @@ public:
 	///
 	Plugins* getPluginsInstance() { return _plugins; };
 
+	///
+	/// @brief Get a pointer to the bonjour instance
+	/// @return                  Plugins instance pointer
+	///
+	BonjourBrowserWrapper* getBonjourInstance();
+/*
+	///
+	/// @brief Get a setting by settings::type from SettingsManager
+	/// @param type  The settingyType from enum
+	/// @return      Data object
+	///
+	QJsonDocument getSetting(const settings::type& type);
+
+	///
+	/// @brief Save a complete json config
+	/// @param config  The entire config object
+	/// @param correct If true will correct json against schema before save
+	/// @return        True on success else false
+	///
+	bool saveSettings(QJsonObject config, const bool& correct = false);
+*/
 	///
 	/// Returns the number of attached leds
 	///
@@ -198,7 +225,7 @@ public:
 	bool sourceAutoSelectEnabled() { return _sourceAutoSelectEnabled; };
 
 	///
-	/// Enable/Disable components during runtime
+	/// @brief Enable/Disable components during runtime, called from external API (requests)
 	///
 	/// @param component The component [SMOOTHING, BLACKBORDER, FORWARDER, UDPLISTENER, BOBLIGHT_SERVER, GRABBER]
 	/// @param state The state of the component [true | false]
@@ -314,8 +341,8 @@ public slots:
 	/// sets the methode how image is maped to leds
 	void setLedMappingType(int mappingType);
 
-	///
-	Hyperion::BonjourRegister getHyperionSessions();
+	/// get all bonjour sessions
+	QMap<QString,BonjourRecord> getHyperionSessions();
 
 	/// Slot which is called, when state of hyperion has been changed
 	void hyperionStateChanged();
@@ -345,8 +372,6 @@ public:
 	static RgbTransform * createRgbTransform(const QJsonObject& colorConfig);
 	static RgbChannelAdjustment * createRgbChannelAdjustment(const QJsonObject & colorConfig, const QString channelName, const int defaultR, const int defaultG, const int defaultB);
 
-	static LinearColorSmoothing * createColorSmoothing(const QJsonObject & smoothingConfig, LedDevice* leddevice);
-	static MessageForwarder * createMessageForwarder(const QJsonObject & forwarderConfig);
 	static QSize getLedLayoutGridSize(const QJsonValue& ledsConfig);
 
 signals:
@@ -373,16 +398,19 @@ signals:
 	/// Signal emitted when a 3D movie is detected
 	void videoMode(VideoMode mode);
 
+	///
+	/// @brief Emits whenever a config part changed. SIGNAL PIPE helper for SettingsManager -> HyperionDaemon
+	/// @param type   The settings type from enum
+	/// @param data   The data as QJsonDocument
+	///
+	//void settingsChanged(const settings::type& type, const QJsonDocument& data);
+
 private slots:
 	///
 	/// Updates the priority muxer with the current time and (re)writes the led color with applied
 	/// transforms.
 	///
 	void update();
-
-	void currentBonjourRecordsChanged(const QList<BonjourRecord> &list);
-	void bonjourRecordResolved(const QHostInfo &hostInfo, int port);
-	void bonjourResolve();
 
 	/// check for configWriteable and modified changes, called by _fsWatcher or fallback _cTimer
 	void checkConfigState(QString cfile = NULL);
@@ -394,7 +422,16 @@ private:
 	///
 	/// @param[in] qjsonConfig The Json configuration
 	///
-	Hyperion(const QJsonObject& qjsonConfig, const QString configFile, const QString rootPath);
+	Hyperion(HyperionDaemon* daemon, const quint8& instance, const QJsonObject& qjsonConfig, const QString configFile, const QString rootPath);
+
+	/// The parent Hyperion Daemon
+	HyperionDaemon* _daemon;
+
+	/// Settings manager of this instance
+	SettingsManager* _settingsManager;
+
+	/// Register that holds component states
+	ComponentRegister _componentRegister;
 
 	/// The specifiation of the led frame construction and picture integration
 	LedString _ledString;
@@ -439,7 +476,6 @@ private:
 
 	/// The timer for handling priority channel timeouts
 	QTimer _timer;
-	QTimer _timerBonjourResolver;
 
 	/// buffer for leds
 	std::vector<ColorRgb> _ledBuffer;
@@ -449,8 +485,6 @@ private:
 
 	/// count of hardware leds
 	unsigned _hwLedCount;
-
-	ComponentRegister _componentRegister;
 
 	/// register of input sources and it's prio channel
 	PriorityRegister _priorityRegister;
@@ -468,10 +502,6 @@ private:
 	int _ledMAppingType;
 
 	hyperion::Components   _prevCompId;
-	BonjourServiceBrowser  _bonjourBrowser;
-	BonjourServiceResolver _bonjourResolver;
-	BonjourRegister        _hyperionSessions;
-	QString                _bonjourCurrentServiceToResolve;
 
 	/// Observe filesystem changes (_configFile), if failed use Timer
 	QFileSystemWatcher _fsWatcher;

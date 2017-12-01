@@ -8,9 +8,7 @@
 			"enum" : ["serverinfo"]
 		},
 		"subscribe" : {
-			"type" : "string",
-			"enum" : ["priorities-update"]
-
+			"type" : "array"
 		},
 		"tan" : {
 			"type" : "integer"

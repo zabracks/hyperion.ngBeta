@@ -3,12 +3,14 @@
 
 namespace hyperion
 {
+
 /**
  * Enumeration of components in Hyperion.
  */
 enum Components
 {
 	COMP_INVALID,
+	COMP_ALL,
 	COMP_SMOOTHING,
 	COMP_BLACKBORDER,
 	COMP_FORWARDER,
@@ -26,6 +28,7 @@ inline const char* componentToString(Components c)
 {
 	switch (c)
 	{
+		case COMP_ALL:           return "Hyperion";
 		case COMP_SMOOTHING:     return "Smoothing";
 		case COMP_BLACKBORDER:   return "Blackborder detector";
 		case COMP_FORWARDER:     return "Json/Proto forwarder";
@@ -45,6 +48,7 @@ inline const char* componentToIdString(Components c)
 {
 	switch (c)
 	{
+		case COMP_ALL:           return "ALL";
 		case COMP_SMOOTHING:     return "SMOOTHING";
 		case COMP_BLACKBORDER:   return "BLACKBORDER";
 		case COMP_FORWARDER:     return "FORWARDER";
@@ -63,6 +67,7 @@ inline const char* componentToIdString(Components c)
 inline  Components stringToComponent(QString component)
 {
 	component = component.toUpper();
+	if (component == "ALL")           return COMP_ALL;
 	if (component == "SMOOTHING")     return COMP_SMOOTHING;
 	if (component == "BLACKBORDER")   return COMP_BLACKBORDER;
 	if (component == "FORWARDER")     return COMP_FORWARDER;

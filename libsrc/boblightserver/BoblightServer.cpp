@@ -9,24 +9,29 @@
 #include <hyperion/Hyperion.h>
 #include <bonjour/bonjourserviceregister.h>
 
+// qt incl
+#include <QTcpServer>
+
 using namespace hyperion;
 
 BoblightServer::BoblightServer(const QJsonObject& config)
 	: QObject()
 	, _hyperion(Hyperion::getInstance())
-	, _server()
+	, _server(new QTcpServer(this))
 	, _openConnections()
 	, _priority(0)
 	, _log(Logger::getInstance("BOBLIGHT"))
-	, _isActive(false)
 	, _port(0)
 {
 	Debug(_log, "Instance created");
 
+	// listen for component change
+	connect(_hyperion, SIGNAL(componentStateChanged(hyperion::Components,bool)), this, SLOT(componentStateChanged(hyperion::Components,bool)));
+	// listen new connection signal from server
+	connect(_server, SIGNAL(newConnection()), this, SLOT(newConnection()));
+
 	// init
 	handleSettingsUpdate(config);
-	// Set trigger for incoming connections
-	connect(&_server, SIGNAL(newConnection()), this, SLOT(newConnection()));
 }
 
 BoblightServer::~BoblightServer()
@@ -36,19 +41,17 @@ BoblightServer::~BoblightServer()
 
 void BoblightServer::start()
 {
-	if ( active() )
+	if ( _server->isListening() )
 		return;
 
-	if (!_server.listen(QHostAddress::Any, _port))
+	if (!_server->listen(QHostAddress::Any, _port))
 	{
 		throw std::runtime_error("BOBLIGHT ERROR: server could not bind to port");
 	}
-	Info(_log, "Boblight server started on port %d", _port);
-
-	_isActive = true;
+	Info(_log, "Started on port %d", _port);
 
 	_hyperion->registerPriority("Boblight", _priority);
-	_hyperion->getComponentRegister().componentStateChanged(COMP_BOBLIGHTSERVER, _isActive);
+	_hyperion->getComponentRegister().componentStateChanged(COMP_BOBLIGHTSERVER, _server->isListening());
 
 	if(_bonjourService == nullptr)
 	{
@@ -59,40 +62,43 @@ void BoblightServer::start()
 
 void BoblightServer::stop()
 {
-	if ( ! active() )
+	if ( ! _server->isListening() )
 		return;
 
 	foreach (BoblightClientConnection * connection, _openConnections) {
 		delete connection;
 	}
-	_server.close();
-	_isActive = false;
-
+	_server->close();
+	Info(_log, "Stopped");
 	_hyperion->unRegisterPriority("Boblight");
-	_hyperion->getComponentRegister().componentStateChanged(COMP_BOBLIGHTSERVER, _isActive);
+	_hyperion->getComponentRegister().componentStateChanged(COMP_BOBLIGHTSERVER, _server->isListening());
+}
+
+bool BoblightServer::active()
+{
+	return _server->isListening();
 }
 
 void BoblightServer::componentStateChanged(const hyperion::Components component, bool enable)
 {
 	if (component == COMP_BOBLIGHTSERVER)
 	{
-		if (_isActive != enable)
+		if (_server->isListening() != enable)
 		{
 			if (enable) start();
 			else        stop();
-			Info(_log, "change state to %s", (_isActive ? "enabled" : "disabled") );
 		}
 	}
 }
 
 uint16_t BoblightServer::getPort() const
 {
-	return _server.serverPort();
+	return _server->serverPort();
 }
 
 void BoblightServer::newConnection()
 {
-	QTcpSocket * socket = _server.nextPendingConnection();
+	QTcpSocket * socket = _server->nextPendingConnection();
 
 	if (socket != nullptr)
 	{

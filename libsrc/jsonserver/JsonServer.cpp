@@ -6,41 +6,44 @@
 #include "JsonClientConnection.h"
 
 // hyperion include
+#include <hyperion/Hyperion.h>
 #include <hyperion/MessageForwarder.h>
+#include <bonjour/bonjourserviceregister.h>
 
 // qt includes
+#include <QTcpServer>
 #include <QTcpSocket>
 #include <QJsonDocument>
 #include <QByteArray>
 
-JsonServer::JsonServer(uint16_t port)
+JsonServer::JsonServer(const QJsonObject& config)
 	: QObject()
-	, _server()
+	, _server(new QTcpServer(this))
 	, _hyperion(Hyperion::getInstance())
 	, _openConnections()
 	, _log(Logger::getInstance("JSONSERVER"))
 {
-	if (!_server.listen(QHostAddress::Any, port))
-	{
-		throw std::runtime_error("JSONSERVER ERROR: could not bind to port");
-	}
-
-		QList<MessageForwarder::JsonSlaveAddress> list = Hyperion::getInstance()->getForwarder()->getJsonSlaves();
-		for ( int i=0; i<list.size(); i++ )
-		{
-			if ( list.at(i).addr == QHostAddress::LocalHost && list.at(i).port == port ) {
-				throw std::runtime_error("JSONSERVER ERROR: Loop between proto server and forwarder detected. Fix your config!");
-			}
-		}
+	Debug(_log, "Created instance");
 
 	// Set trigger for incoming connections
-	connect(&_server, SIGNAL(newConnection()), this, SLOT(newConnection()));
+	connect(_server, SIGNAL(newConnection()), this, SLOT(newConnection()));
 
 	// receive state of forwarder
 	connect(_hyperion, &Hyperion::componentStateChanged, this, &JsonServer::componentStateChanged);
 
 	// initial connect TODO get initial state from config to stop messing
 	connect(_hyperion, &Hyperion::forwardJsonMessage, this, &JsonServer::forwardJsonMessage);
+
+	// init
+	handleSettingsUpdate(settings::S_JSONSERVER, QJsonDocument(config));
+
+	QList<MessageForwarder::JsonSlaveAddress> list = _hyperion->getForwarder()->getJsonSlaves();
+	for ( int i=0; i<list.size(); i++ )
+	{
+		if ( list.at(i).addr == QHostAddress::LocalHost && list.at(i).port == _port ) {
+			throw std::runtime_error("JSONSERVER ERROR: Loop between proto server and forwarder detected. Fix your config!");
+		}
+	}
 }
 
 JsonServer::~JsonServer()
@@ -50,16 +53,57 @@ JsonServer::~JsonServer()
 	}
 }
 
+void JsonServer::start()
+{
+	if(_server->isListening())
+		return;
+
+	if (!_server->listen(QHostAddress::Any, _port))
+	{
+		throw std::runtime_error("JSONSERVER ERROR: could not bind to port");
+	}
+	Info(_log, "Started on port %d", _port);
+
+	if(_serviceRegister == nullptr)
+	{
+		_serviceRegister = new BonjourServiceRegister();
+		_serviceRegister->registerService("_hyperiond-json._tcp", _port);
+	}
+}
+
+void JsonServer::stop()
+{
+	if(!_server->isListening())
+		return;
+
+	_server->close();
+	Info(_log, "Stopped");
+}
+
+void JsonServer::handleSettingsUpdate(const settings::type& type, const QJsonDocument& config)
+{
+	if(type == settings::S_JSONSERVER)
+	{
+		QJsonObject obj = config.object();
+		if(_port != obj["port"].toInt())
+		{
+			_port = obj["port"].toInt();
+			stop();
+			start();
+		}
+	}
+}
+
 uint16_t JsonServer::getPort() const
 {
-	return _server.serverPort();
+	return _port;
 }
 
 void JsonServer::newConnection()
 {
-	while(_server.hasPendingConnections())
+	while(_server->hasPendingConnections())
 	{
-		if (QTcpSocket * socket = _server.nextPendingConnection())
+		if (QTcpSocket * socket = _server->nextPendingConnection())
 		{
 			Debug(_log, "New connection from: %s ",socket->localAddress().toString().toStdString().c_str());
 			JsonClientConnection * connection = new JsonClientConnection(socket);

@@ -18,7 +18,7 @@ Plugins::Plugins(Hyperion* hyperion)
 	, _mainThreadState(_hyperion->getEffectEngineInstance()->getMainThreadState())
 {
 	// make sure the table 'plugins' contains all columns
-	_PDB->createTable(QStringList()<<"updated_at TEXT DEFAULT CURRENT_TIMESTAMP"<<"id TEXT"<<"enabled INTEGER DEFAULT 1"<<"auto_update INTEGER DEFAULT 1"<<"hyperion_name TEXT");
+	_PDB->createTable(QStringList()<<"updated_at TEXT DEFAULT CURRENT_TIMESTAMP"<<"id TEXT"<<"enabled INTEGER DEFAULT 0"<<"auto_update INTEGER DEFAULT 1"<<"hyperion_name TEXT");
 
 	// from files
 	connect(&_files, &Files::pluginAction, this, &Plugins::doPluginAction);

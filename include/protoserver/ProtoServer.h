@@ -4,23 +4,23 @@
 #include <cstdint>
 
 // Qt includes
-#include <QTcpServer>
 #include <QSet>
 #include <QList>
 #include <QStringList>
-
-// Hyperion includes
-#include <hyperion/Hyperion.h>
 
 // hyperion includes
 #include <utils/Image.h>
 #include <utils/ColorRgb.h>
 #include <utils/VideoMode.h>
 #include <utils/Logger.h>
+#include <utils/Components.h>
 
 // forward decl
 class ProtoClientConnection;
 class ProtoConnection;
+class QTcpServer;
+class Hyperion;
+class BonjourServiceRegister;
 
 namespace proto {
 class HyperionRequest;
@@ -39,9 +39,9 @@ public:
 	///
 	/// ProtoServer constructor
 	/// @param hyperion Hyperion instance
-	/// @param port port number on which to start listening for connections
+	/// @param the configuration
 	///
-	ProtoServer(uint16_t port = 19445);
+	ProtoServer(const QJsonObject& config);
 	~ProtoServer();
 
 	///
@@ -78,7 +78,7 @@ private:
 	Hyperion * _hyperion;
 
 	/// The TCP server object
-	QTcpServer _server;
+	QTcpServer * _server;
 
 	/// List with open connections
 	QSet<ProtoClientConnection *> _openConnections;
@@ -90,6 +90,17 @@ private:
 	/// Logger instance
 	Logger * _log;
 
+	/// Service register
+	BonjourServiceRegister * _serviceRegister = nullptr;
+
 	/// flag if forwarder is enabled
 	bool _forwarder_enabled;
+
+	uint16_t _port = 0;
+	/// process a new setting
+	void handleSettingsUpdate(const QJsonObject& obj);
+	/// Start server
+	void start();
+	/// Stop server
+	void stop();
 };

@@ -1,6 +1,5 @@
 $(document).ready( function() {
 	var uiLock = false;
-	var prevSess = 0;
 
 	loadContentTo("#container_connection_lost","connection_lost");
 	loadContentTo("#container_restart","restart");
@@ -8,6 +7,12 @@ $(document).ready( function() {
 
 	$(hyperion).on("cmd-serverinfo",function(event){
 		serverInfo = event.response.info;
+		// protect components from serverinfo updates
+		if(!compsInited)
+		{
+			comps = event.response.info.components
+			compsInited = true;
+		}
 		$(hyperion).trigger("ready");
 
 		if (serverInfo.hyperion.config_modified)
@@ -15,10 +20,10 @@ $(document).ready( function() {
 		else
 			$("#hyperion_reload_notify").fadeOut("fast");
 
-		if (serverInfo.hyperion.off)
-			$("#hyperion_disabled_notify").fadeIn("fast");
-		else
+		if (serverInfo.hyperion.enabled)
 			$("#hyperion_disabled_notify").fadeOut("fast");
+		else
+			$("#hyperion_disabled_notify").fadeIn("fast");
 
 		if (!serverInfo.hyperion.config_writeable)
 		{
@@ -33,26 +38,13 @@ $(document).ready( function() {
 			uiLock = false;
 		}
 
-		var sess = serverInfo.hyperion.sessions;
-		if (sess.length != prevSess)
-		{
-			wSess = [];
-			prevSess = sess.length;
-			for(var i = 0; i<sess.length; i++)
-			{
-				if(sess[i].type == "_hyperiond-http._tcp.")
-				{
-					wSess.push(sess[i]);
-				}
-			}
-
-			if (wSess.length > 1)
-				$('#btn_instanceswitch').toggle(true);
-			else
-				$('#btn_instanceswitch').toggle(false);
-		}
-
+		updateSessions();
 	}); // end cmd-serverinfo
+
+	$(hyperion).on("cmd-sessions-update", function(event) {
+		serverInfo.sessions = event.response.data;
+		updateSessions();
+	});
 
 	$(hyperion).one("cmd-management-plugins", function(event) {
 		requestPluginsInitData()
@@ -96,6 +88,17 @@ $(document).ready( function() {
 
 	$(hyperion).one("ready", function(event) {
 		loadContent();
+	});
+
+	$(hyperion).on("cmd-components-update", function(event) {
+		let obj = event.response.data
+		comps.forEach((entry, index) => {
+			if (entry.name === obj.name){
+				comps[index] = obj;
+			}
+		});
+		// notify the update
+		$(hyperion).trigger("components-updated");
 	});
 
 	$("#btn_hyperion_reload").on("click", function(){

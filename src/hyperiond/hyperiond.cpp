@@ -28,16 +28,21 @@
 #include <protoserver/ProtoServer.h>
 #include <boblightserver/BoblightServer.h>
 #include <udplistener/UDPListener.h>
+#include <webserver/WebServer.h>
 #include <db/DBManager.h>
+#include <HyperionConfig.h> // Required to determine the cmake options
 #include "hyperiond.h"
 
-#include <QDebug>
-#include <QHostInfo>
+// bonjour browser
+#include <bonjour/bonjourbrowserwrapper.h>
+
 
 HyperionDaemon::HyperionDaemon(QString configFile, const QString rootPath, QObject *parent)
 	: QObject(parent)
 	, _log(Logger::getInstance("MAIN"))
+	, _bonjourBrowserWrapper(new BonjourBrowserWrapper())
 	, _dBManager(new DBManager())
+	, _webserver(nullptr)
 	, _jsonServer(nullptr)
 	, _protoServer(nullptr)
 	, _boblightServer(nullptr)
@@ -79,7 +84,7 @@ HyperionDaemon::HyperionDaemon(QString configFile, const QString rootPath, QObje
 		WarningIf(_qconfig.contains("logger"), Logger::getInstance("LOGGER"), "Logger settings overridden by command line argument");
 	}
 
-	_hyperion = Hyperion::initInstance(_qconfig, configFile, rootPath);
+	_hyperion = Hyperion::initInstance(this, 0, _qconfig, configFile, rootPath);
 
 	Info(_log, "Hyperion initialized");
 }
@@ -90,10 +95,22 @@ HyperionDaemon::~HyperionDaemon()
 	delete _hyperion;
 }
 
+quint16 HyperionDaemon::getWebServerPort()
+{
+	return _webserver->getPort();
+}
+
 void HyperionDaemon::freeObjects()
 {
 	_hyperion->clearall(true);
-	Debug(_log, "destroy grabbers and network stuff");
+	// destroy network first as a client might want to access pointers
+	delete _webserver;
+	delete _jsonServer;
+	delete _protoServer;
+	delete _boblightServer;
+	delete _udpListener;
+
+	delete _bonjourBrowserWrapper;
 	delete _amlGrabber;
 	delete _dispmanx;
 	delete _fbGrabber;
@@ -102,18 +119,16 @@ void HyperionDaemon::freeObjects()
 	{
 		delete grabber;
 	}
-	delete _jsonServer;
-	delete _protoServer;
-	delete _boblightServer;
-	delete _udpListener;
 	delete _stats;
 	delete _dBManager;
 
 	_v4l2Grabbers.clear();
+	_bonjourBrowserWrapper = nullptr;
 	_amlGrabber     = nullptr;
 	_dispmanx       = nullptr;
 	_fbGrabber      = nullptr;
 	_osxGrabber     = nullptr;
+	_webserver      = nullptr;
 	_jsonServer     = nullptr;
 	_protoServer    = nullptr;
 	_boblightServer = nullptr;
@@ -123,9 +138,6 @@ void HyperionDaemon::freeObjects()
 
 void HyperionDaemon::run()
 {
-	// ---- network services -----
-	startNetworkServices();
-
 	// ---- grabber -----
 	createGrabberV4L2();
 	createSystemFrameGrabber();
@@ -133,6 +145,10 @@ void HyperionDaemon::run()
 	#if !defined(ENABLE_DISPMANX) && !defined(ENABLE_OSX) && !defined(ENABLE_FB) && !defined(ENABLE_X11) && !defined(ENABLE_AMLOGIC)
 		WarningIf(_qconfig.contains("framegrabber"), _log, "No grabber can be instantiated, because all grabbers have been left out from the build");
 	#endif
+
+	// ---- network services -----
+	startNetworkServices();
+
 	Info(_log, "Hyperion started");
 
 	connect(_hyperion,SIGNAL(closing()),this,SLOT(freeObjects()));
@@ -271,52 +287,22 @@ void HyperionDaemon::startNetworkServices()
 	// Create Stats
 	_stats = new Stats();
 
-	// Create Json server if configuration is present
-	unsigned int jsonPort = 19444;
-	if (_qconfig.contains("jsonServer"))
-	{
-		const QJsonObject & jsonServerConfig = _qconfig["jsonServer"].toObject();
-		//jsonEnable = jsonServerConfig.get("enable", true).asBool();
-		jsonPort   = jsonServerConfig["port"].toInt(jsonPort);
-	}
+	// Create Json server
+	_jsonServer = new JsonServer(_qconfig["jsonServer"].toObject());
+	//connect(_hyperion, &Hyperion::settingsChanged, _jsonServer, &JsonServer::handleSettingsUpdate);
 
-	_jsonServer = new JsonServer(jsonPort);
-	Info(_log, "Json server created and started on port %d", _jsonServer->getPort());
-
-	// Create Proto server if configuration is present
-	unsigned int protoPort = 19445;
-	if (_qconfig.contains("protoServer"))
-	{
-		const QJsonObject & protoServerConfig = _qconfig["protoServer"].toObject();
-		//protoEnable = protoServerConfig.get("enable", true).asBool();
-		protoPort  = protoServerConfig["port"].toInt(protoPort);
-	}
-
-	_protoServer = new ProtoServer(protoPort);
-	QObject::connect(_hyperion, SIGNAL(videoMode(VideoMode)), _protoServer, SLOT(setVideoMode(VideoMode))); 
-	Info(_log, "Proto server created and started on port %d", _protoServer->getPort());
+	// Create Proto server
+	_protoServer = new ProtoServer(_qconfig["protoServer"].toObject());
+	//QObject::connect(_hyperion, SIGNAL(videoMode(VideoMode)), _protoServer, SLOT(setVideoMode(VideoMode)));
 
 	// boblight server
 	_boblightServer = new BoblightServer(_qconfig["boblightServer"].toObject());
-	connect( Hyperion::getInstance(), SIGNAL(componentStateChanged(hyperion::Components,bool)), _boblightServer, SLOT(componentStateChanged(hyperion::Components,bool)));
 
 	// Create UDP listener
 	_udpListener = new UDPListener(_qconfig["udpListener"].toObject());
-	connect( Hyperion::getInstance(), SIGNAL(componentStateChanged(hyperion::Components,bool)), _udpListener, SLOT(componentStateChanged(hyperion::Components,bool)));
 
-	// zeroconf description - $configname@$hostname
-	const QJsonObject & generalConfig = _qconfig["general"].toObject();
-	const QString mDNSDescr = generalConfig["name"].toString("") + "@" + QHostInfo::localHostName();
-
-	// zeroconf json
-	BonjourServiceRegister *bonjourRegister_json = new BonjourServiceRegister();
-	bonjourRegister_json->registerService("_hyperiond-json._tcp", _jsonServer->getPort());
-	Debug(_log, "Json mDNS responder started");
-
-	// zeroconf proto
-	BonjourServiceRegister *bonjourRegister_proto = new BonjourServiceRegister();
-	bonjourRegister_proto->registerService("_hyperiond-proto._tcp", _protoServer->getPort());
-	Debug(_log, "Proto mDNS responder started");
+	// Create Webserver
+	_webserver = new WebServer();
 }
 
 
@@ -378,7 +364,6 @@ void HyperionDaemon::createSystemFrameGrabber()
 			else if (type == "x11")      createGrabberX11(grabberConfig);
 			else { Warning( _log, "unknown framegrabber type '%s'", QSTRING_CSTR(type)); grabberCompState = false; }
 
-//			_hyperion->getComponentRegister().componentStateChanged(hyperion::COMP_GRABBER, grabberCompState);
 			_hyperion->setComponentState(hyperion::COMP_GRABBER, grabberCompState );
 		}
 	}

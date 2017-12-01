@@ -49,6 +49,8 @@
 
 class SysTray;
 class DBManager;
+class BonjourBrowserWrapper;
+class WebServer;
 
 class HyperionDaemon : public QObject
 {
@@ -60,6 +62,9 @@ public:
 	HyperionDaemon(QString configFile, QString rootPath, QObject *parent=nullptr);
 	~HyperionDaemon();
 
+	BonjourBrowserWrapper* getBonjourInstance() { return _bonjourBrowserWrapper; };
+
+	quint16 getWebServerPort();
 	void loadConfig(const QString & configFile);
 	void run();
 
@@ -80,23 +85,25 @@ private:
 	void createGrabberOsx(const QJsonObject & grabberConfig);
 	void createGrabberX11(const QJsonObject & grabberConfig);
 
-	Logger*             _log;
-	DBManager*          _dBManager;
-	QJsonObject         _qconfig;
-	JsonServer*         _jsonServer;
-	ProtoServer*        _protoServer;
-	BoblightServer*     _boblightServer;
-	UDPListener*        _udpListener;
+	Logger*                _log;
+	BonjourBrowserWrapper* _bonjourBrowserWrapper;
+	DBManager*             _dBManager;
+	QJsonObject            _qconfig;
+	WebServer*             _webserver;
+	JsonServer*            _jsonServer;
+	ProtoServer*           _protoServer;
+	BoblightServer*        _boblightServer;
+	UDPListener*           _udpListener;
 	std::vector<V4L2Wrapper*>  _v4l2Grabbers;
-	DispmanxWrapper*    _dispmanx;
+	DispmanxWrapper*       _dispmanx;
 #ifdef ENABLE_X11
-	X11Wrapper*         _x11Grabber;
+	X11Wrapper*            _x11Grabber;
 #endif
-	AmlogicWrapper*     _amlGrabber;
-	FramebufferWrapper* _fbGrabber;
-	OsxWrapper*         _osxGrabber;
-	Hyperion*           _hyperion;
-	Stats*              _stats;
+	AmlogicWrapper*        _amlGrabber;
+	FramebufferWrapper*    _fbGrabber;
+	OsxWrapper*            _osxGrabber;
+	Hyperion*              _hyperion;
+	Stats*                 _stats;
 
 	unsigned            _grabber_width;
 	unsigned            _grabber_height;

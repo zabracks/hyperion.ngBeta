@@ -27,11 +27,14 @@ UDPListener::UDPListener(const QJsonObject& config/*const int priority, const in
 	_isActive(false),
 	_listenPort(0)
 {
-	Debug(_log, "UDP listener created");
-	handleSettingsUpdate(config);
-
+	Debug(_log, "Instance created");
+	// listen for comp changes
+	connect(_hyperion, SIGNAL(componentStateChanged(hyperion::Components,bool)), this, SLOT(componentStateChanged(hyperion::Components,bool)));
 	// Set trigger for incoming connections
 	connect(_server, SIGNAL(readyRead()), this, SLOT(readPendingDatagrams()));
+
+	// init
+	handleSettingsUpdate(config);
 }
 
 UDPListener::~UDPListener()
@@ -84,6 +87,7 @@ void UDPListener::stop()
 
 	_server->close();
 	_isActive = false;
+	Info(_log, "Stopped");
 	_hyperion->unRegisterPriority("UDPLISTENER");
 	_hyperion->getComponentRegister().componentStateChanged(COMP_UDPLISTENER, _isActive);
 }
@@ -96,7 +100,6 @@ void UDPListener::componentStateChanged(const hyperion::Components component, bo
 		{
 			if (enable) start();
 			else        stop();
-			Info(_log, "change state to %s", (enable ? "enabled" : "disabled") );
 		}
 	}
 }

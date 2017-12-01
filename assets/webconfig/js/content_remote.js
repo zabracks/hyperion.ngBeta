@@ -97,7 +97,6 @@ $(document).ready(function() {
 			updateInputSelect();
 			updateLedMapping();
 			updateVideoMode();
-			updateComponents();
 			updateEffectlist();
 		}
 	}
@@ -211,16 +210,19 @@ $(document).ready(function() {
 
 	function updateComponents()
 	{
-		components = serverInfo.components;
+		components = comps;
 		// create buttons
 		$('#componentsbutton').html("");
 		for ( idx=0; idx<components.length;idx++)
 		{
+			if(components[idx].name == "ALL")
+				continue
+
 			enable_style = (components[idx].enabled? "btn-success" : "btn-danger");
 			enable_icon  = (components[idx].enabled? "fa-play" : "fa-stop");
 			comp_name    = components[idx].name;
 			comp_btn_id  = "comp_btn_"+comp_name;
-			comp_goff	 = serverInfo.hyperion.off? "disabled" : "enabled";
+			comp_goff	 = serverInfo.hyperion.enabled? "enabled" : "disabled";
 
 			// create btn if not there
 			if ($("#"+comp_btn_id).length == 0)
@@ -331,6 +333,10 @@ $(document).ready(function() {
 
 	// interval updates
 	$(hyperion).on("cmd-serverinfo",updateRemote);
+
+	$(hyperion).on("components-updated",updateComponents);
+	//first update
+	updateComponents();
 
 	removeOverlay();
 });

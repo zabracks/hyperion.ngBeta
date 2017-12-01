@@ -5,6 +5,9 @@
 #include <hyperion/Grabber.h>
 #include <HyperionConfig.h>
 
+//forwarder
+#include <hyperion/MessageForwarder.h>
+
 GrabberWrapper::GrabberWrapper(QString grabberName, Grabber * ggrabber, unsigned width, unsigned height, const unsigned updateRate_Hz, const int priority, hyperion::Components grabberComponentId)
 	: _grabberName(grabberName)
 	, _hyperion(Hyperion::getInstance())

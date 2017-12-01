@@ -17,6 +17,7 @@
 
 // hyperion include
 #include <hyperion/Hyperion.h>
+#include <hyperion/MessageForwarder.h>
 #include <hyperion/ImageProcessorFactory.h>
 #include <hyperion/ImageProcessor.h>
 #include <hyperion/ColorAdjustment.h>
@@ -34,15 +35,24 @@
 // plugins
 #include <plugin/Plugins.h>
 
+// bonjour wrapper
+#include <bonjour/bonjourbrowserwrapper.h>
+
+// Hyperion Daemon
+#include <../src/hyperiond/hyperiond.h>
+
+// settingsManagaer
+#include <hyperion/SettingsManager.h>
+
 #define CORE_LOGGER Logger::getInstance("Core")
 
 Hyperion* Hyperion::_hyperion = nullptr;
 
-Hyperion* Hyperion::initInstance(const QJsonObject& qjsonConfig, const QString configFile, const QString rootPath)
+Hyperion* Hyperion::initInstance( HyperionDaemon* daemon, const quint8& instance, const QJsonObject& qjsonConfig, const QString configFile, const QString rootPath)
 {
 	if ( Hyperion::_hyperion != nullptr )
 		throw std::runtime_error("Hyperion::initInstance can be called only one time");
-	Hyperion::_hyperion = new Hyperion(qjsonConfig, configFile, rootPath);
+	Hyperion::_hyperion = new Hyperion(daemon, instance, qjsonConfig, configFile, rootPath);
 
 	return Hyperion::_hyperion;
 }
@@ -320,91 +330,32 @@ QSize Hyperion::getLedLayoutGridSize(const QJsonValue& ledsConfig)
 	return gridSize;
 }
 
-
-
-LinearColorSmoothing * Hyperion::createColorSmoothing(const QJsonObject & smoothingConfig, LedDevice* leddevice){
-	QString type = smoothingConfig["type"].toString("linear").toLower();
-	LinearColorSmoothing * device = nullptr;
-	type = "linear"; // TODO currently hardcoded type, delete it if we have more types
-
-	if (type == "linear")
-	{
-		Info( CORE_LOGGER, "Creating linear smoothing");
-		device = new LinearColorSmoothing(
-		            leddevice,
-		            smoothingConfig["updateFrequency"].toDouble(25.0),
-		            smoothingConfig["time_ms"].toInt(200),
-		            smoothingConfig["updateDelay"].toInt(0),
-		            smoothingConfig["continuousOutput"].toBool(true)
-		            );
-	}
-	else
-	{
-		Error(CORE_LOGGER, "Smoothing disabled, because of unknown type '%s'.", QSTRING_CSTR(type));
-	}
-
-	device->setEnable(smoothingConfig["enable"].toBool(true));
-	InfoIf(!device->enabled(), CORE_LOGGER,"Smoothing disabled");
-
-	Q_ASSERT(device != nullptr);
-	return device;
-}
-
-MessageForwarder * Hyperion::createMessageForwarder(const QJsonObject & forwarderConfig)
-{
-		MessageForwarder * forwarder = new MessageForwarder();
-		if ( !forwarderConfig.isEmpty() && forwarderConfig["enable"].toBool(true) )
-		{
-			if ( !forwarderConfig["json"].isNull() && forwarderConfig["json"].isArray() )
-			{
-				const QJsonArray & addr = forwarderConfig["json"].toArray();
-				for (signed i = 0; i < addr.size(); ++i)
-				{
-					Info(CORE_LOGGER, "Json forward to %s", addr.at(i).toString().toStdString().c_str());
-					forwarder->addJsonSlave(addr[i].toString());
-				}
-			}
-
-			if ( !forwarderConfig["proto"].isNull() && forwarderConfig["proto"].isArray() )
-			{
-				const QJsonArray & addr = forwarderConfig["proto"].toArray();
-				for (signed i = 0; i < addr.size(); ++i)
-				{
-					Info(CORE_LOGGER, "Proto forward to %s", addr.at(i).toString().toStdString().c_str());
-					forwarder->addProtoSlave(addr[i].toString());
-				}
-			}
-		}
-
-	return forwarder;
-}
-
 MessageForwarder * Hyperion::getForwarder()
 {
 	return _messageForwarder;
 }
 
-Hyperion::Hyperion(const QJsonObject &qjsonConfig, const QString configFile, const QString rootPath)
-	: _ledString(createLedString(qjsonConfig["leds"], createColorOrder(qjsonConfig["device"].toObject())))
+Hyperion::Hyperion(HyperionDaemon* daemon, const quint8& instance, const QJsonObject &qjsonConfig, const QString configFile, const QString rootPath)
+	: _daemon(daemon)
+	, _settingsManager(nullptr)//new SettingsManager(this, instance))
+	, _componentRegister(this)
+	, _ledString(createLedString(qjsonConfig["leds"], createColorOrder(qjsonConfig["device"].toObject())))
 	, _ledStringClone(createLedStringClone(qjsonConfig["leds"], createColorOrder(qjsonConfig["device"].toObject())))
 	, _muxer(_ledString.leds().size())
 	, _raw2ledAdjustment(createLedColorsAdjustment(_ledString.leds().size(), qjsonConfig["color"].toObject()))
 	, _effectEngine(nullptr)
 	, _plugins(nullptr)
-	, _messageForwarder(createMessageForwarder(qjsonConfig["forwarder"].toObject()))
+	, _messageForwarder(new MessageForwarder(this, qjsonConfig["forwarder"].toObject()))
 	, _qjsonConfig(qjsonConfig)
 	, _configFile(configFile)
 	, _rootPath(rootPath)
 	, _timer()
-	, _timerBonjourResolver()
 	, _log(CORE_LOGGER)
 	, _hwLedCount(_ledString.leds().size())
 	, _sourceAutoSelectEnabled(true)
 	, _configHash()
 	, _ledGridSize(getLedLayoutGridSize(qjsonConfig["leds"]))
 	, _prevCompId(hyperion::COMP_INVALID)
-	, _bonjourBrowser(this)
-	, _bonjourResolver(this)
 	, _videoMode(VIDEO_2D)
 {
 
@@ -415,32 +366,19 @@ Hyperion::Hyperion(const QJsonObject &qjsonConfig, const QString configFile, con
 	// set color correction activity state
 	const QJsonObject& color = qjsonConfig["color"].toObject();
 
-	_bonjourBrowser.browseForServiceType(QLatin1String("_hyperiond-http._tcp"));
-	connect(&_bonjourBrowser, SIGNAL(currentBonjourRecordsChanged(const QList<BonjourRecord>&)),this, SLOT(currentBonjourRecordsChanged(const QList<BonjourRecord> &)));
-	connect(&_bonjourResolver, SIGNAL(bonjourRecordResolved(const QHostInfo &, int)), this, SLOT(bonjourRecordResolved(const QHostInfo &, int)));
-
 	// initialize the image processor factory
 	_ledMAppingType = ImageProcessor::mappingTypeToInt(color["imageToLedMappingType"].toString());
 	ImageProcessorFactory::getInstance().init(_ledString, qjsonConfig["blackborderdetector"].toObject(),_ledMAppingType );
 
-	getComponentRegister().componentStateChanged(hyperion::COMP_FORWARDER, _messageForwarder->forwardingEnabled());
-
 	// initialize leddevices
 	_device       = LedDeviceFactory::construct(qjsonConfig["device"].toObject(),_hwLedCount);
-	_deviceSmooth = createColorSmoothing(qjsonConfig["smoothing"].toObject(), _device);
+	_deviceSmooth = new LinearColorSmoothing(_device, qjsonConfig["smoothing"].toObject());
 	getComponentRegister().componentStateChanged(hyperion::COMP_SMOOTHING, _deviceSmooth->componentState());
 	getComponentRegister().componentStateChanged(hyperion::COMP_LEDDEVICE, _device->componentState());
-
-	_deviceSmooth->addConfig(true); // add pause to config 1
 
 	// setup the timer
 	_timer.setSingleShot(true);
 	QObject::connect(&_timer, SIGNAL(timeout()), this, SLOT(update()));
-
-	_timerBonjourResolver.setSingleShot(false);
-	_timerBonjourResolver.setInterval(1000);
-	QObject::connect(&_timerBonjourResolver, SIGNAL(timeout()), this, SLOT(bonjourResolve()));
-	_timerBonjourResolver.start();
 
 	// create the effect engine, must be initialized after smoothing!
 	_effectEngine = new EffectEngine(this,qjsonConfig["effects"].toObject());
@@ -479,6 +417,21 @@ Hyperion::Hyperion(const QJsonObject &qjsonConfig, const QString configFile, con
 	update();
 }
 
+BonjourBrowserWrapper* Hyperion::getBonjourInstance()
+{
+	return _daemon->getBonjourInstance();
+}
+/*
+QJsonDocument Hyperion::getSetting(const settings::type& type)
+{
+	return _settingsManager->getSetting(type);
+}
+
+bool Hyperion::saveSettings(QJsonObject config, const bool& correct)
+{
+	return _settingsManager->saveSettings(config, correct);
+}
+*/
 QString Hyperion::getConfigFileName() const
 {
 	QFileInfo cF(_configFile);
@@ -513,6 +466,7 @@ void Hyperion::freeObjects(bool emitCloseSignal)
 	delete _device;
 	delete _raw2ledAdjustment;
 	delete _messageForwarder;
+	delete _settingsManager;
 }
 
 Hyperion::~Hyperion()
@@ -525,51 +479,9 @@ unsigned Hyperion::getLedCount() const
 	return _ledString.leds().size();
 }
 
-void Hyperion::currentBonjourRecordsChanged(const QList<BonjourRecord> &list)
+QMap<QString,BonjourRecord> Hyperion::getHyperionSessions()
 {
-	_hyperionSessions.clear();
-	for ( auto rec : list )
-	{
-		_hyperionSessions.insert(rec.serviceName, rec);
-	}
-}
-
-void Hyperion::bonjourRecordResolved(const QHostInfo &hostInfo, int port)
-{
-	if ( _hyperionSessions.contains(_bonjourCurrentServiceToResolve))
-	{
-		QString host   = hostInfo.hostName();
-		QString domain = _hyperionSessions[_bonjourCurrentServiceToResolve].replyDomain;
-		if (host.endsWith("."+domain))
-		{
-			host.remove(host.length()-domain.length()-1,domain.length()+1);
-		}
-		_hyperionSessions[_bonjourCurrentServiceToResolve].hostName = host;
-		_hyperionSessions[_bonjourCurrentServiceToResolve].port     = port;
-		_hyperionSessions[_bonjourCurrentServiceToResolve].address  = hostInfo.addresses().isEmpty() ? "" : hostInfo.addresses().first().toString();
-		Debug(_log, "found hyperion session: %s:%d",QSTRING_CSTR(hostInfo.hostName()), port);
-
-		//emit change
-		emit hyperionStateChanged();
-	}
-}
-
-void Hyperion::bonjourResolve()
-{
-	for(auto key : _hyperionSessions.keys())
-	{
-		if (_hyperionSessions[key].port < 0)
-		{
-			_bonjourCurrentServiceToResolve = key;
-			_bonjourResolver.resolveBonjourRecord(_hyperionSessions[key]);
-			break;
-		}
-	}
-}
-
-Hyperion::BonjourRegister Hyperion::getHyperionSessions()
-{
-	return _hyperionSessions;
+	return getBonjourInstance()->getAllServices();
 }
 
 void Hyperion::checkConfigState(QString cfile)
