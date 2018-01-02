@@ -39,7 +39,7 @@ Stats::Stats()
 	}
 
 	// prepare content
-	QJsonObject config = _hyperion->getConfig();
+	QJsonObject config = _hyperion->getQJsonConfig();
 	SysInfo::HyperionSysInfo data = SysInfo::get();
 
 	QJsonObject system;
@@ -49,7 +49,7 @@ Stats::Stats()
 	system["pVersion"   ] = data.productVersion;
 	system["pName"      ] = data.prettyName;
 	system["version"    ] = QString(HYPERION_VERSION);
-	system["device"     ] = LedDevice::activeDevice();
+	system["device"     ] = Hyperion::getInstance()->getActiveDevice();
 	system["id"         ] = _hyperion->getId();
 	system["hw_id"      ] = _hash;
 	system["ledCount"   ] = QString::number(Hyperion::getInstance()->getLedCount());

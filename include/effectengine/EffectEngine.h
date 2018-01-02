@@ -19,7 +19,6 @@
 
 // pre-declarioation
 class Effect;
-typedef struct _ts PyThreadState;
 
 class EffectEngine : public QObject
 {
@@ -28,8 +27,6 @@ class EffectEngine : public QObject
 public:
 	EffectEngine(Hyperion * hyperion, const QJsonObject & jsonEffectConfig);
 	virtual ~EffectEngine();
-
-	PyThreadState* getMainThreadState() { return _mainThreadState; };
 
 	void readEffects();
 
@@ -44,6 +41,20 @@ public:
 	{
 		return _effectSchemas;
 	};
+
+	///
+	/// @brief Get all init data of the running effects and stop them
+	///
+	void cacheRunningEffects();
+
+	///
+	/// @brief Start all cached effects, origin and smooth cfg is default
+	///
+	void startCachedEffects();
+
+signals:
+	/// Emit when the effect list has been updated
+	void effectListUpdated();
 
 public slots:
 	/// Run the specified effect on the given priority channel and optionally specify a timeout
@@ -80,9 +91,9 @@ private:
 
 	std::list<ActiveEffectDefinition> _availableActiveEffects;
 
+	std::list<ActiveEffectDefinition> _cachedActiveEffects;
+
 	std::list<EffectSchema> _effectSchemas;
 
 	Logger * _log;
-
-	PyThreadState* _mainThreadState;
 };

@@ -26,7 +26,7 @@ public:
 	 */
 	void addAdjustment(ColorAdjustment * adjustment);
 
-	void setAdjustmentForLed(const QString& id, const unsigned startLed, const unsigned endLed);
+	void setAdjustmentForLed(const QString& id, const unsigned startLed, unsigned endLed);
 
 	bool verifyAdjustments() const;
 

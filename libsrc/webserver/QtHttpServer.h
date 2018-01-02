@@ -17,6 +17,7 @@ class QTcpServer;
 class QtHttpRequest;
 class QtHttpReply;
 class QtHttpClientWrapper;
+class NetOrigin;
 
 class QtHttpServerWrapper : public QTcpServer {
     Q_OBJECT
@@ -78,9 +79,9 @@ private:
     QSslKey                                    m_sslKey;
     QList<QSslCertificate>                     m_sslCerts;
     QString                                    m_serverName;
+	NetOrigin*                                 m_netOrigin;
     QtHttpServerWrapper *                      m_sockServer;
     QHash<QTcpSocket *, QtHttpClientWrapper *> m_socksClientsHash;
 };
 
 #endif // QTHTTPSERVER_H
-

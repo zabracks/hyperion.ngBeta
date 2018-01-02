@@ -13,13 +13,15 @@ class QTimer;
 class BonjourBrowserWrapper : public QObject
 {
 	Q_OBJECT
-
-public:
+private:
+	friend class HyperionDaemon;
 	///
-	/// @brief Browse for hyperion services in bonjour
+	/// @brief Browse for hyperion services in bonjour, constructed from HyperionDaemon
 	///        Searching for hyperion http service by default
 	///
 	BonjourBrowserWrapper(QObject * parent = 0);
+
+public:
 
 	///
 	/// @brief Browse for a service
@@ -29,6 +31,9 @@ public:
 	/// @brief Get all available sessions
 	///
 	QMap<QString,BonjourRecord> getAllServices() { return _hyperionSessions; };
+
+	static BonjourBrowserWrapper* instance;
+	static BonjourBrowserWrapper* getInstance(){ return instance; };
 
 signals:
 	///

@@ -13,18 +13,23 @@
 #include <utils/Process.h>
 #include <utils/jsonschema/QJsonFactory.h>
 
-CgiHandler::CgiHandler (Hyperion * hyperion, QString baseUrl, QObject * parent)
+CgiHandler::CgiHandler (Hyperion * hyperion, QObject * parent)
 	: QObject(parent)
 	, _hyperion(hyperion)
 	, _args(QStringList())
 	, _hyperionConfig(_hyperion->getQJsonConfig())
-	, _baseUrl(baseUrl)
+	, _baseUrl()
 	, _log(Logger::getInstance("WEBSERVER"))
 {
 }
 
 CgiHandler::~CgiHandler()
 {
+}
+
+void CgiHandler::setBaseUrl(const QString& url)
+{
+	_baseUrl = url;
 }
 
 void CgiHandler::exec(const QStringList & args, QtHttpRequest * request, QtHttpReply * reply)

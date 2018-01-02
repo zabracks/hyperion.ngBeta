@@ -52,7 +52,7 @@ QSqlDatabase DBManager::getDB() const
 	return QSqlDatabase::database(_dbn);
 }
 
-bool DBManager::createRecord(const VectorPair& conditions, const QVariantMap& columns) const
+const bool DBManager::createRecord(const VectorPair& conditions, const QVariantMap& columns) const
 {
 	if(recordExists(conditions))
 	{
@@ -102,7 +102,7 @@ bool DBManager::createRecord(const VectorPair& conditions, const QVariantMap& co
 	return true;
 }
 
-bool DBManager::recordExists(const VectorPair& conditions) const
+const bool DBManager::recordExists(const VectorPair& conditions) const
 {
 	QSqlDatabase idb = getDB();
 	QSqlQuery query(idb);
@@ -137,7 +137,7 @@ bool DBManager::recordExists(const VectorPair& conditions) const
 	return false;
 }
 
-bool DBManager::updateRecord(const VectorPair& conditions, const QVariantMap& columns) const
+const bool DBManager::updateRecord(const VectorPair& conditions, const QVariantMap& columns) const
 {
 	QSqlDatabase idb = getDB();
 	QSqlQuery query(idb);
@@ -167,7 +167,7 @@ bool DBManager::updateRecord(const VectorPair& conditions, const QVariantMap& co
 		prepBindVal << pair.second;
 	}
 
-	query.prepare(QString("UPDATE %1 SET %2 %3").arg(_table,prep.join(" ")).arg(prepCond.join(" ")));
+	query.prepare(QString("UPDATE %1 SET %2 %3").arg(_table,prep.join(", ")).arg(prepCond.join(" ")));
 	// add column values
 	doAddBindValue(query, values);
 	// add condition values
@@ -180,7 +180,7 @@ bool DBManager::updateRecord(const VectorPair& conditions, const QVariantMap& co
 	return true;
 }
 
-bool DBManager::getRecord(const VectorPair& conditions, QVariantMap& results, const QStringList& tColumns) const
+const bool DBManager::getRecord(const VectorPair& conditions, QVariantMap& results, const QStringList& tColumns) const
 {
 	QSqlDatabase idb = getDB();
 	QSqlQuery query(idb);
@@ -222,11 +222,45 @@ bool DBManager::getRecord(const VectorPair& conditions, QVariantMap& results, co
 	return true;
 }
 
-bool DBManager::deleteRecord(const VectorPair& conditions) const
+const bool DBManager::getRecords(QVector<QVariantMap>& results, const QStringList& tColumns) const
+{
+	QSqlDatabase idb = getDB();
+	QSqlQuery query(idb);
+	query.setForwardOnly(true);
+
+	QString sColumns("*");
+	if(!tColumns.isEmpty())
+		sColumns = tColumns.join(", ");
+
+	query.prepare(QString("SELECT %1 FROM %2").arg(sColumns,_table));
+
+	if(!query.exec())
+	{
+		Error(_log, "Failed to get records: '%s' in table: '%s' Error: %s", QSTRING_CSTR(sColumns), QSTRING_CSTR(_table), QSTRING_CSTR(idb.lastError().text()));
+		return false;
+	}
+
+	// iterate through all found records
+	while(query.next())
+	{
+		QVariantMap entry;
+		QSqlRecord rec = query.record();
+		for(int i = 0; i<rec.count(); i++)
+		{
+			entry[rec.fieldName(i)] = rec.value(i);
+		}
+		results.append(entry);
+	}
+
+	return true;
+}
+
+
+const bool DBManager::deleteRecord(const VectorPair& conditions) const
 {
 	if(conditions.isEmpty())
 	{
-		Error(_log, "Oops, a deleteRecord() call wanted to delete the entire table (%s)! Denied it", QSTRING_CSTR(_table));
+		Error(_log, "Oops, a deleteRecord() call wants to delete the entire table (%s)! Denied it", QSTRING_CSTR(_table));
 		return false;
 	}
 
@@ -252,11 +286,12 @@ bool DBManager::deleteRecord(const VectorPair& conditions) const
 			Error(_log, "Failed to delete record: '%s' in table: '%s' Error: %s", QSTRING_CSTR(prepCond.join(" ")), QSTRING_CSTR(_table), QSTRING_CSTR(idb.lastError().text()));
 			return false;
 		}
+		return true;
 	}
-	return true;
+	return false;
 }
 
-bool DBManager::createTable(QStringList& columns) const
+const bool DBManager::createTable(QStringList& columns) const
 {
 	if(columns.isEmpty())
 	{
@@ -298,7 +333,7 @@ bool DBManager::createTable(QStringList& columns) const
 	return true;
 }
 
-bool DBManager::createColumn(const QString& column) const
+const bool DBManager::createColumn(const QString& column) const
 {
 	QSqlDatabase idb = getDB();
 	QSqlQuery query(idb);
@@ -310,7 +345,7 @@ bool DBManager::createColumn(const QString& column) const
 	return true;
 }
 
-bool DBManager::tableExists(const QString& table) const
+const bool DBManager::tableExists(const QString& table) const
 {
 	QSqlDatabase idb = getDB();
 	QStringList tables = idb.tables();
@@ -319,7 +354,7 @@ bool DBManager::tableExists(const QString& table) const
 	return false;
 }
 
-bool DBManager::deleteTable(const QString& table) const
+const bool DBManager::deleteTable(const QString& table) const
 {
 	if(tableExists(table))
 	{

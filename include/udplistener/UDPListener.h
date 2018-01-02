@@ -6,15 +6,20 @@
 // Qt includes
 #include <QSet>
 #include <QHostAddress>
+#include <QJsonDocument>
 
 // Hyperion includes
 #include <utils/Logger.h>
 #include <utils/Components.h>
 
+// settings
+#include <utils/settings.h>
+
 class Hyperion;
 class UDPClientConnection;
 class BonjourServiceRegister;
 class QUdpSocket;
+class NetOrigin;
 
 ///
 /// This class creates a UDP server which accepts connections from boblight clients.
@@ -29,7 +34,7 @@ public:
 	/// @param hyperion Hyperion instance
 	/// @param port port number on which to start listening for connections
 	///
-	UDPListener(const QJsonObject& config);
+	UDPListener(const QJsonDocument& config);
 	~UDPListener();
 
 	///
@@ -54,6 +59,13 @@ public slots:
 	void stop();
 
 	void componentStateChanged(const hyperion::Components component, bool enable);
+
+	///
+	/// @brief Handle settings update from Hyperion Settingsmanager emit or this constructor
+	/// @param type   settingyType from enum
+	/// @param config configuration object
+	///
+	void handleSettingsUpdate(const settings::type& type, const QJsonDocument& config);
 
 private slots:
 	///
@@ -92,5 +104,6 @@ private:
 	uint16_t                  _listenPort;
 	QAbstractSocket::BindFlag _bondage;
 
-	void handleSettingsUpdate(const QJsonObject& obj);
+	/// Check Network Origin
+	NetOrigin* _netOrigin;
 };

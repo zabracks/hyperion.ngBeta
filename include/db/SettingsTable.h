@@ -15,46 +15,25 @@ class SettingsTable : public DBManager
 
 public:
 	/// construct wrapper with settings table
-	SettingsTable(const quint8& instance)
+	SettingsTable(const quint8& instance = 0)
 		: _hyperion_inst(instance)
 	{
 		setTable("settings");
 		// create table columns
-		createTable(QStringList()<<"updated_at TEXT DEFAULT CURRENT_TIMESTAMP"<<"type TEXT"<<"config TEXT"<<"hyperion_inst INTEGER");
+		createTable(QStringList()<<"type TEXT"<<"config TEXT"<<"hyperion_inst INTEGER"<<"updated_at TEXT");
 	};
 	~SettingsTable(){};
 
 	///
-	/// @brief      Create a new settings record
+	/// @brief      Create or update a settings record
 	/// @param[in]  type           type of setting
 	/// @param[in]  config         The configuration data
 	/// @return     true on success else false
 	///
-	inline bool createSettingsRecord(const QString& type, const QString& config) const
+	inline const bool createSettingsRecord(const QString& type, const QString& config) const
 	{
 		QVariantMap map;
 		map["config"] = config;
-
-		VectorPair cond;
-		cond.append(CPair("type",type));
-		// when a setting is not global we are searching also for the instance
-		if(!isSettingGlobal(type))
-			cond.append(CPair("AND hyperion_inst",_hyperion_inst));
-		if(!createRecord(cond, map))
-			return false;
-		return true;
-	}
-
-	///
-	/// @brief Update 'config' and 'updated_at' column
-	/// @param[in]  type   The settings type
-	/// @param[in]  data   The json data as string
-	/// @return            true on success else false
-	///
-	inline bool updateSettingsRecord(const QString& type, const QString& data) const
-	{
-		QVariantMap map;
-		map["config"] = data;
 		map["updated_at"] = QDateTime::currentDateTimeUtc().toString(Qt::ISODate);
 
 		VectorPair cond;
@@ -62,9 +41,7 @@ public:
 		// when a setting is not global we are searching also for the instance
 		if(!isSettingGlobal(type))
 			cond.append(CPair("AND hyperion_inst",_hyperion_inst));
-		if(!createRecord(cond, map))
-			return false;
-		return true;
+		return createRecord(cond, map);
 	}
 
 	///
@@ -73,16 +50,14 @@ public:
 	/// @param[in]  hyperion_inst  The instance of hyperion assigned (might be empty)
 	/// @return     true on success else false
 	///
-	inline bool recordExist(const QString& type) const
+	inline const bool recordExist(const QString& type) const
 	{
 		VectorPair cond;
 		cond.append(CPair("type",type));
 		// when a setting is not global we are searching also for the instance
 		if(!isSettingGlobal(type))
 			cond.append(CPair("AND hyperion_inst",_hyperion_inst));
-		if(recordExists(cond))
-			return true;
-		return false;
+		return recordExists(cond);
 	}
 
 	///
@@ -119,12 +94,12 @@ public:
 		return results["config"].toString();
 	}
 
-	bool isSettingGlobal(const QString& type) const
+	inline bool isSettingGlobal(const QString& type) const
 	{
 		// list of global settings
 		QStringList list;
 		// server port services
-		list << "boblightServer" << "jsonServer" << "protoServer" << "udpListener" << "webConfig"
+		list << "boblightServer" << "jsonServer" << "protoServer" << "udpListener" << "webConfig" << "network"
 		// capture
 		<< "framegrabber" << "grabberV4L2"
 		// other

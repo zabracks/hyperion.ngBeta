@@ -40,17 +40,25 @@
 #endif
 
 #include <utils/Logger.h>
+#include <utils/Image.h>
+#include <utils/VideoMode.h>
 
-#include <jsonserver/JsonServer.h>
-#include <protoserver/ProtoServer.h>
-#include <boblightserver/BoblightServer.h>
-#include <udplistener/UDPListener.h>
-#include <utils/Stats.h>
+// settings management
+#include <utils/settings.h>
 
+class Hyperion;
 class SysTray;
-class DBManager;
+class JsonServer;
+class ProtoServer;
+class BoblightServer;
+class UDPListener;
+class Stats;
 class BonjourBrowserWrapper;
 class WebServer;
+class SettingsManager;
+class AuthManager;
+class NetOrigin;
+class PythonInit;
 
 class HyperionDaemon : public QObject
 {
@@ -62,21 +70,59 @@ public:
 	HyperionDaemon(QString configFile, QString rootPath, QObject *parent=nullptr);
 	~HyperionDaemon();
 
-	BonjourBrowserWrapper* getBonjourInstance() { return _bonjourBrowserWrapper; };
-
 	quint16 getWebServerPort();
-	void loadConfig(const QString & configFile);
-	void run();
+	///
+	/// @brief Get the current videoMode
+	///
+	const VideoMode & getVideoMode() { return _currVideoMode; };
 
-	void startInitialEffect();
+	///
+	/// @brief get the settings
+	///
+	const QJsonDocument getSetting(const settings::type& type);
+
 	void startNetworkServices();
 
-	// grabber creators
-	void createGrabberV4L2();
-	void createSystemFrameGrabber();
+	static HyperionDaemon* getInstance() { return daemon; };
+	static HyperionDaemon* daemon;
 
 public slots:
 	void freeObjects();
+
+signals:
+	///
+	/// @brief PIPE settings events from Hyperion class to HyperionDaemon components
+	///
+	void settingsChanged(const settings::type& type, const QJsonDocument& data);
+
+	///
+	/// @brief PIPE SystemCapture images from SystemCapture over HyperionDaemon to Hyperion class
+	///
+	void systemImage(const Image<ColorRgb>&  image);
+
+	///
+	/// @brief PIPE v4lCapture images from v4lCapture over HyperionDaemon to Hyperion class
+	///
+	void v4lImage(const Image<ColorRgb> & image);
+
+	///
+	/// @brief After eval of setVideoMode this signal emits with a new one on change
+	///
+	void videoMode(const VideoMode& mode);
+
+private slots:
+	///
+	/// @brief Handle settings update from Hyperion Settingsmanager emit or this constructor
+	/// @param type   settingyType from enum
+	/// @param config configuration object
+	///
+	void handleSettingsUpdate(const settings::type& type, const QJsonDocument& config);
+
+	///
+	/// @brief Listen for videoMode changes and emit videoMode in case of a change, update _currVideoMode
+	/// @param mode  The requested video mode
+	///
+	void setVideoMode(const VideoMode& mode);
 
 private:
 	void createGrabberDispmanx();
@@ -86,9 +132,10 @@ private:
 	void createGrabberX11(const QJsonObject & grabberConfig);
 
 	Logger*                _log;
+	AuthManager*           _authManager;
 	BonjourBrowserWrapper* _bonjourBrowserWrapper;
-	DBManager*             _dBManager;
-	QJsonObject            _qconfig;
+	NetOrigin*             _netOrigin;
+	PythonInit*            _pyInit;
 	WebServer*             _webserver;
 	JsonServer*            _jsonServer;
 	ProtoServer*           _protoServer;
@@ -96,9 +143,7 @@ private:
 	UDPListener*           _udpListener;
 	std::vector<V4L2Wrapper*>  _v4l2Grabbers;
 	DispmanxWrapper*       _dispmanx;
-#ifdef ENABLE_X11
 	X11Wrapper*            _x11Grabber;
-#endif
 	AmlogicWrapper*        _amlGrabber;
 	FramebufferWrapper*    _fbGrabber;
 	OsxWrapper*            _osxGrabber;
@@ -108,9 +153,11 @@ private:
 	unsigned            _grabber_width;
 	unsigned            _grabber_height;
 	unsigned            _grabber_frequency;
-	int                 _grabber_priority;
 	unsigned            _grabber_cropLeft;
 	unsigned            _grabber_cropRight;
 	unsigned            _grabber_cropTop;
     unsigned            _grabber_cropBottom;
+
+	VideoMode _currVideoMode;
+	SettingsManager*  _settingsManager;
 };

@@ -8,10 +8,14 @@
 //hyperion incl
 #include <utils/Logger.h>
 #include <plugin/PluginDefinition.h>
+#include <utils/ColorRgb.h>
 
 // qt incl
 #include <QThread>
 #include <QStringList>
+
+class Hyperion;
+class Plugins;
 
 class Plugin : public QThread
 {
@@ -19,7 +23,7 @@ class Plugin : public QThread
 
 public:
 
-	Plugin(PyThreadState* mainState, const PluginDefinition& def, const QString& id, const QStringList& dPaths);
+	Plugin(Plugins* plugins, Hyperion* hyperion, const PluginDefinition& def, const QString& id, const QStringList& dPaths);
 	virtual ~Plugin();
 
 	// QThread inherited run method
@@ -34,10 +38,11 @@ public:
 	/// get the remove flag
 	bool hasRemoveFlag() const { return _remove; };
 
-	static void registerPluginModule();
-
 private:
-	PyThreadState* _mainState;
+	/// The Plugins instance
+	Plugins* _plugins;
+	/// Instance pointer of Hyperion
+	Hyperion* _hyperion;
 	/// definition of this instance
 	PluginDefinition _def;
 	/// id of the plugin
@@ -64,11 +69,62 @@ private:
 
 	FILE* PyFile_AsFileWithMode(PyObject *py_file, const char *mode);
 
-	// Wrapper methods for Python interpreter extra buildin methods
-	static PyMethodDef pluginMethods[];
-	static PyObject* log              (PyObject *self, PyObject *args);
+public:
+	/// Map of all callback PyObjects that has been requested by this instance
+	QMap<QString, PyObject*> callbackObjects;
 
-	static struct PyModuleDef moduleDef;
+public:
+	///
+	/// INSTANCE METHODS FOR PYTHON PLUGIN MODUL METHODS
+	///
 
-	Plugin* getInstance();
+	///
+	/// @brief Print a log message from plugin
+	/// @param msg  The message to print
+	/// @param lvl  The log lvl: 0=Info, 1=Warning, 2=Error, 3=Debug -> unhandled int value is Debug
+	///
+	void printToLog(char* msg, int lvl = -1);
+
+	///
+	/// @brief Set a component state of a specific component
+	/// @param comp   The component 0=ALL, 1=SMOOTH, 2=BLACKB, 3=LEDDEVICE, 4=SYSCAPT, 5=V4L
+	/// @param enable If true it enables the comp, else false
+	/// @return True if component was found else false
+	///
+	const int setComponentState(const int& comp, const int& enable);
+
+	///
+	/// @brief Get the current settings object for this plugin instance
+	/// @return The settings
+	///
+	const QJsonValue getSettings();
+
+	///
+	/// @brief Set a single color with a specific timeout
+	/// @param  color   The RGB color
+	/// @param  priority The priority channel
+	/// @param  timeout  The timeout
+	///
+	void setColor(const ColorRgb& color, const int& priority, const int& duration);
+
+	///
+	/// @brief Set a effect by name, at the given priority with duration
+	/// @param  name      The name of the effect
+	/// @param  priority  The priority
+	/// @param  duration  duration in ms
+	///
+	int setEffect(const char* name, const int& priority, const int& duration);
+
+public slots:
+	///
+	/// CALLBACK SLOTS
+	///
+
+	/// @brief called whenever a plugin action is ongoing
+	/// @param action   action from enum
+	/// @param id       plugin id
+	/// @param def      PluginDefinition (optional)
+	/// @param success  true if action was a success, else false
+	///
+	void handlePluginAction(PluginAction action, QString id, bool success = true, PluginDefinition def = PluginDefinition());
 };

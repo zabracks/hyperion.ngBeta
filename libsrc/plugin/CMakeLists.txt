@@ -18,6 +18,7 @@ target_link_libraries(plugins
 	hyperion
 	hyperion-utils
 	database
+	python
 	Qt5::Core
 	quazip_static
 	${PYTHON_LIBRARIES}

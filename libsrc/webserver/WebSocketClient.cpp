@@ -238,7 +238,8 @@ void WebSocketClient::handleBinaryMessage(QByteArray &data)
 	image.resize(width, height);
 
 	memcpy(image.memptr(), data.data()+4, imgSize);
-	_hyperion->setImage(priority, image, duration_s*1000);
+	//_hyperion->registerInput();
+	_hyperion->setInputImage(priority, image, duration_s*1000);
 }
 
 qint64 WebSocketClient::sendMessage(QJsonObject obj)

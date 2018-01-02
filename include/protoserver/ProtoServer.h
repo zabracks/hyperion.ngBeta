@@ -7,6 +7,7 @@
 #include <QSet>
 #include <QList>
 #include <QStringList>
+#include <QJsonDocument>
 
 // hyperion includes
 #include <utils/Image.h>
@@ -15,12 +16,17 @@
 #include <utils/Logger.h>
 #include <utils/Components.h>
 
+// settings
+#include <utils/settings.h>
+
 // forward decl
 class ProtoClientConnection;
 class ProtoConnection;
 class QTcpServer;
 class Hyperion;
 class BonjourServiceRegister;
+class ComponentRegister;
+class NetOrigin;
 
 namespace proto {
 class HyperionRequest;
@@ -38,10 +44,9 @@ class ProtoServer : public QObject
 public:
 	///
 	/// ProtoServer constructor
-	/// @param hyperion Hyperion instance
-	/// @param the configuration
+	/// @param config the configuration
 	///
-	ProtoServer(const QJsonObject& config);
+	ProtoServer(const QJsonDocument& config);
 	~ProtoServer();
 
 	///
@@ -52,6 +57,13 @@ public:
 public slots:
 	void sendImageToProtoSlaves(int priority, const Image<ColorRgb> & image, int duration_ms);
 	void componentStateChanged(const hyperion::Components component, bool enable);
+
+	///
+	/// @brief Handle settings update from Hyperion Settingsmanager emit or this constructor
+	/// @param type   settingyType from enum
+	/// @param config configuration object
+	///
+	void handleSettingsUpdate(const settings::type& type, const QJsonDocument& config);
 
 signals:
 	///
@@ -90,6 +102,12 @@ private:
 	/// Logger instance
 	Logger * _log;
 
+	/// Component Register
+	ComponentRegister* _componentRegister;
+
+	/// Network Origin Check
+	NetOrigin* _netOrigin;
+
 	/// Service register
 	BonjourServiceRegister * _serviceRegister = nullptr;
 
@@ -97,8 +115,7 @@ private:
 	bool _forwarder_enabled;
 
 	uint16_t _port = 0;
-	/// process a new setting
-	void handleSettingsUpdate(const QJsonObject& obj);
+
 	/// Start server
 	void start();
 	/// Stop server

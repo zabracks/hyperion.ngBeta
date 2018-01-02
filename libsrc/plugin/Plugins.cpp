@@ -1,32 +1,19 @@
 // project
 #include <plugin/Plugins.h>
 #include "Plugin.h"
-#include "PDBWrapper.h"
-
-// effect engine
-#include <effectengine/EffectEngine.h>
-
-// qt includes
-#include <QDebug>
+#include <db/PluginTable.h>
 
 Plugins::Plugins(Hyperion* hyperion)
 	: QObject()
 	, _log(Logger::getInstance("PLUGINS"))
 	, _hyperion(hyperion)
-	, _PDB(new PDBWrapper(_hyperion->getConfigFileName()))
+	, _PDB(new PluginTable(_hyperion->getConfigFileName()))
 	, _files(_hyperion->getRootPath(), _hyperion->getConfigFileName(), _PDB)
-	, _mainThreadState(_hyperion->getEffectEngineInstance()->getMainThreadState())
 {
-	// make sure the table 'plugins' contains all columns
-	_PDB->createTable(QStringList()<<"updated_at TEXT DEFAULT CURRENT_TIMESTAMP"<<"id TEXT"<<"enabled INTEGER DEFAULT 0"<<"auto_update INTEGER DEFAULT 1"<<"hyperion_name TEXT");
-
 	// from files
 	connect(&_files, &Files::pluginAction, this, &Plugins::doPluginAction);
 	// to files
 	connect(this, &Plugins::pluginAction, &_files, &Files::doPluginAction);
-
-	// register plugin module
-	//Plugin::registerPluginModule();
 
 	// file handling init after database creation and signal link
 	_files.init();
@@ -177,14 +164,20 @@ void Plugins::start(QString id)
 	if(!_PDB->isPluginEnabled(id))
 		_PDB->setPluginEnable(id, true);
 
+	Plugin* newPlugin = new Plugin(this, _hyperion, def, id, dPaths);
+	_runningPlugins.insert(id, newPlugin);
+
+	// notify
 	emit pluginAction(P_STARTED, id, true);
 	Info(_log, "Plugin with id '%s' started",QSTRING_CSTR(id));
 
-	Plugin* newPlugin = new Plugin(_mainThreadState, def, id, dPaths);
-	_runningPlugins.insert(id, newPlugin);
-
 	// listen for plugin thread exit
 	connect(newPlugin, &QThread::finished, this, &Plugins::pluginFinished);
+	// listen for pluginActions
+	connect(this, &Plugins::pluginAction, newPlugin, &Plugin::handlePluginAction);
+
+	// start
+	newPlugin->start();
 }
 
 bool Plugins::stop(const QString& id, const bool& remove) const
@@ -196,9 +189,6 @@ bool Plugins::stop(const QString& id, const bool& remove) const
 			_PDB->setPluginEnable(id, false);
 
 		Plugin* plugin = _runningPlugins.value(id);
-
-		if(plugin->isInterruptionRequested())
-			return true;
 
 		if(remove)
 			plugin->setRemoveFlag();

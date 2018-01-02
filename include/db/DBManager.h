@@ -45,21 +45,21 @@ public:
 	/// @param[in]  columns  The columns of the table. Requires at least one entry!
 	/// @return              True on success else false
 	///
-	bool createTable(QStringList& columns) const;
+	const bool createTable(QStringList& columns) const;
 
 	///
 	/// @brief Create a column if the column already exists returns false and logs error
 	/// @param[in]  column   The column of the table
 	/// @return              True on success else false
 	///
-	bool createColumn(const QString& column) const;
+	const bool createColumn(const QString& column) const;
 
 	///
 	/// @brief Check if at least one record exists in table with the conditions
 	/// @param[in]  conditions The search conditions (WHERE)
 	/// @return                True on success else false
 	///
-	bool recordExists(const VectorPair& conditions) const;
+	const bool recordExists(const VectorPair& conditions) const;
 
 	///
 	/// @brief Create a new record in table when the conditions find no existing entry. Add additional key:value pairs in columns
@@ -68,7 +68,7 @@ public:
 	/// @param[in]  columns    columns to create or update (optional)
 	/// @return                True on success else false
 	///
-	bool createRecord(const VectorPair& conditions, const QVariantMap& columns = QVariantMap()) const;
+	const bool createRecord(const VectorPair& conditions, const QVariantMap& columns = QVariantMap()) const;
 
 	///
 	/// @brief Update a record with conditions and additional key:value pairs in columns
@@ -76,37 +76,46 @@ public:
 	/// @param[in]  columns    columns to update
 	/// @return                True on success else false
 	///
-	bool updateRecord(const VectorPair& conditions, const QVariantMap& columns) const;
+	const bool updateRecord(const VectorPair& conditions, const QVariantMap& columns) const;
 
 	///
-	/// @brief Get data of record
+	/// @brief Get data of a single record, multiple records are not supported
 	/// @param[in]  conditions  condition to search for (WHERE)
 	/// @param[out] results     results of query
 	/// @param[in]  tColumns    target columns to search in (optional)
 	/// @return                 True on success else false
 	///
-	bool getRecord(const VectorPair& conditions, QVariantMap& results, const QStringList& tColumns = QStringList()) const;
+	const bool getRecord(const VectorPair& conditions, QVariantMap& results, const QStringList& tColumns = QStringList()) const;
 
 	///
-	/// @brief Delete a record determined by conditions, fails silent (return true) if entry is not found
-	/// @param[in]  conditions conditions of the row to delete it (WHERE)
-	/// @return                True on success else false
+	/// @brief Get data of multiple records, you need to specify the columns. This search is without conditions. Good to grab all data from db
+	/// @param[in]  conditions  condition to search for (WHERE)
+	/// @param[out] results     results of query
+	/// @param[in]  tColumns    target columns to search in
+	/// @return                 True on success else false
 	///
-	bool deleteRecord(const VectorPair& conditions) const;
+	const bool getRecords(QVector<QVariantMap>& results, const QStringList& tColumns) const;
+
+	///
+	/// @brief Delete a record determined by conditions
+	/// @param[in]  conditions conditions of the row to delete it (WHERE)
+	/// @return                True on success on error or not found false
+	///
+	const bool deleteRecord(const VectorPair& conditions) const;
 
 	///
 	/// @brief Check if table exists in current database
 	/// @param[in]  table   The name of the table
 	/// @return             True on success else false
 	///
-	bool tableExists(const QString& table) const;
+	const bool tableExists(const QString& table) const;
 
 	///
 	/// @brief Delete a table, fails silent (return true) if table is not found
 	/// @param[in]  table   The name of the table
 	/// @return             True on success else false
 	///
-	bool deleteTable(const QString& table) const;
+	const bool deleteTable(const QString& table) const;
 
 private:
 

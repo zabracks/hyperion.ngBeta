@@ -13,6 +13,11 @@ $(document).ready( function() {
 			comps = event.response.info.components
 			compsInited = true;
 		}
+
+		if(!priosInited)
+		{
+			priosInited = true;
+		}
 		$(hyperion).trigger("ready");
 
 		if (serverInfo.hyperion.config_modified)
@@ -45,23 +50,38 @@ $(document).ready( function() {
 		serverInfo.sessions = event.response.data;
 		updateSessions();
 	});
+/*
+	$(hyperion).on("cmd-authorize-event", function(event) {
+		console.log(event.response)
+		var val = event.response;
+		showInfoDialog("grantToken",$.i18n('conf_general_tok_grantT'),$.i18n('conf_general_tok_grantMsg')+'<br><div style="font-weight:bold">'+val.comment+val.id+'</div>')
+		$("#tok_grant_acc").off().on('click', function(){
+			tokenList.push(val)
+			buildTokenList()
+			requestHandleTokenRequest(val.id,true)
+		});
+		$("#tok_deny_acc").off().on('click', function(){
+			requestHandleTokenRequest(val.id,false)
+		});
+	});
+*/
 
-	$(hyperion).one("cmd-management-plugins", function(event) {
-		requestPluginsInitData()
+	$(hyperion).one("cmd-authorize-getTokenList", function(event) {
+		tokenList = event.response.info;
+		requestServerInfo();
 	});
 
 	$(hyperion).one("cmd-plugin-getInitData", function(event) {
 		plugins_installed = event.response.info.installedPlugins;
 		plugins_available = event.response.info.availablePlugins;
-		requestServerInfo();
+		requestTokenInfo();
 	});
 
 	$(hyperion).one("cmd-sysinfo", function(event) {
 		sysInfo = event.response.info;
 
 		currentVersion = sysInfo.hyperion.version;
-
-		requestPluginsManagement()
+		requestPluginsInitData()
 	});
 
 	$(hyperion).one("cmd-config-getschema", function(event) {
@@ -78,20 +98,42 @@ $(document).ready( function() {
 		showOptHelp = serverConfig.general.showOptHelp;
 	});
 
+	$(hyperion).one("cmd-authorize-login", function(event) {
+		requestServerConfigSchema();
+	});
+
 	$(hyperion).on("error",function(event){
 		showInfoDialog("error","Error", event.reason);
 	});
 
 	$(hyperion).on("open",function(event){
-		requestServerConfigSchema();
+		requestAuthorization()
 	});
 
 	$(hyperion).one("ready", function(event) {
 		loadContent();
 	});
 
+	$(hyperion).on("cmd-adjustment-update", function(event) {
+		serverInfo.adjustment = event.response.data
+	});
+
+	$(hyperion).on("cmd-videomode-update", function(event) {
+		serverInfo.videomode = event.response.data.videomode
+	});
+
 	$(hyperion).on("cmd-components-update", function(event) {
 		let obj = event.response.data
+
+		// notfication in index
+		if (obj.name == "ALL")
+		{
+			if(obj.enable)
+				$("#hyperion_disabled_notify").fadeOut("fast");
+			else
+				$("#hyperion_disabled_notify").fadeIn("fast");
+		}
+
 		comps.forEach((entry, index) => {
 			if (entry.name === obj.name){
 				comps[index] = obj;
@@ -99,6 +141,10 @@ $(document).ready( function() {
 		});
 		// notify the update
 		$(hyperion).trigger("components-updated");
+	});
+
+	$(hyperion).on("cmd-effects-update", function(event){
+		serverInfo.effects = event.response.data.effects
 	});
 
 	$("#btn_hyperion_reload").on("click", function(){

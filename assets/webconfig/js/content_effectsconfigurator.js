@@ -107,7 +107,7 @@ $(document).ready( function() {
 	});
 
 	$('#btn_delete').off().on('click',function() {
-		var name = $("#effectsdellist").val();
+		var name = $("#effectsdellist").val().split("_")[1];
 		requestDeleteEffect(name);
 		$(hyperion).one("cmd-delete-effect", function(event) {
 			if (event.response.success)
@@ -163,7 +163,10 @@ $(document).ready( function() {
 	updateDelEffectlist();
 
 	//interval update
-	$(hyperion).on("cmd-serverinfo",updateDelEffectlist);
+	$(hyperion).on("cmd-effects-update", function(event){
+		serverInfo.effects = event.response.data.effects
+		updateDelEffectlist();
+	});
 
 	removeOverlay();
 });

@@ -318,7 +318,6 @@ int main(int argc, char** argv)
 	try
 	{
 		hyperiond = new HyperionDaemon(configFiles[0], rootPath, qApp);
-		hyperiond->run();
 	}
 	catch (std::exception& e)
 	{

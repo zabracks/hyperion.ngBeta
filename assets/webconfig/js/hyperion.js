@@ -25,9 +25,14 @@ var wSess = [];
 var plugins_installed = {};
 var plugins_available = {};
 
-//comps
+//comps serverinfo lock
 comps = [];
 compsInited = false;
+
+// prios serverinfo lock
+priosInited = false;
+// token list
+tokenList = {}
 
 function initRestart()
 {
@@ -165,10 +170,34 @@ function sendToHyperion(command, subcommand, msg)
 // -----------------------------------------------------------
 // wrapped server commands
 
-// also used for watchdog
+function requestAuthorization()
+{
+	sendToHyperion("authorize","login",'"username": "Hyperion", "password": "hyperion"');
+}
+
+function requestToken(comment)
+{
+	sendToHyperion("authorize","createToken",'"comment": "'+comment+'"');
+}
+
+function requestTokenInfo()
+{
+	sendToHyperion("authorize","getTokenList","");
+}
+
+function requestHandleTokenRequest(id, state)
+{
+	sendToHyperion("authorize","answerRequest",'"id":"'+id+'", "accept":'+state);
+}
+
+function requestTokenDelete(id)
+{
+	sendToHyperion("authorize","deleteToken",'"id":"'+id+'"');
+}
+
 function requestServerInfo()
 {
-	sendToHyperion("serverinfo","",'"subscribe":["components-update","sessions-update"]');
+	sendToHyperion("serverinfo","",'"subscribe":["components-update","sessions-update","priorities-update", "imageToLedMapping-update", "adjustment-update", "videomode-update", "effects-update"]');
 }
 
 function requestSysInfo()
@@ -189,11 +218,6 @@ function requestServerConfig()
 function requestServerConfigReload()
 {
 	sendToHyperion("config", "reload");
-}
-
-function requestPluginsManagement()
-{
-	sendToHyperion("management", "plugins");
 }
 
 function requestPluginsInitData()

@@ -6,7 +6,7 @@
 // forward decl
 class QTimer;
 class HTTPUtils;
-class PDBWrapper;
+class PluginTable;
 ///
 /// @brief Handle all file system related tasks, init downloads and repo sync
 ///
@@ -19,9 +19,9 @@ public:
 	/// @brief Constructor
 	/// @param[in]  rootPath rootPath of hyperion user data
 	/// @param[in]  id       id of hyperion
-	/// @param[in]  PDB      PDBWrapper instance
+	/// @param[in]  PDB      PluginTable instance
 	///
-	Files(const QString& rootPath, const QString& id, PDBWrapper* PDB);
+	Files(const QString& rootPath, const QString& id, PluginTable* PDB);
 	~Files();
 
 	/// init files
@@ -51,8 +51,8 @@ private:
 	Logger* _log;
 	/// id of hyperion
 	const QString _id;
-	/// PDBWrapper instance
-	PDBWrapper* _PDB;
+	/// PluginTable instance
+	PluginTable* _PDB;
 	/// HTTP Utils instance
 	HTTPUtils* _http;
 

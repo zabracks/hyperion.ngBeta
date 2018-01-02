@@ -11,8 +11,7 @@
 #include <QList>
 
 class Plugin;
-class PDBWrapper;
-typedef struct _ts PyThreadState;
+class PluginTable;
 
 class Plugins : public QObject
 {
@@ -32,6 +31,8 @@ public:
 
 	bool isPluginAutoUpdateEnabled(const QString& id) const;
 
+	const QJsonValue getSettingsOfPlugin(const QString& id) { QMap<QString, PluginDefinition> inst = getInstalledPlugins(); const PluginDefinition& def =  inst.value(id); return def.settings; };
+
 signals:
 	///
 	/// @brief emits whenever a plugin action is ongoing
@@ -49,12 +50,10 @@ private:
 	Hyperion* _hyperion;
 
 	/// database wrapper
-	PDBWrapper* _PDB;
+	PluginTable* _PDB;
 
 	/// Files instance
 	Files _files;
-
-	PyThreadState* _mainThreadState;
 
 	/// start or restart a plugin
 	void start(QString id);

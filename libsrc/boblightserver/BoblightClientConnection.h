@@ -9,7 +9,7 @@
 #include <hyperion/Hyperion.h>
 #include <utils/Logger.h>
 
-class ImageProcessor;
+//class ImageProcessor;
 
 ///
 /// The Connection object created by \a BoblightServer when a new connection is establshed
@@ -77,7 +77,7 @@ private:
 	QTcpSocket * _socket;
 
 	/// The processor for translating images to led-values
-	ImageProcessor * _imageProcessor;
+	//ImageProcessor * _imageProcessor;
 
 	/// Link to Hyperion for writing led-values to a priority channel
 	Hyperion * _hyperion;
@@ -90,7 +90,7 @@ private:
 
 	/// The latest led color data
 	std::vector<ColorRgb> _ledColors;
-	
+
 	/// logger instance
 	Logger * _log;
 

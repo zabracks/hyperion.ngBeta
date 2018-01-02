@@ -7,14 +7,12 @@
 
 // hyperion includes
 #include <hyperion/Hyperion.h>
-#include <bonjour/bonjourserviceregister.h>
-
 // qt incl
 #include <QTcpServer>
 
 using namespace hyperion;
 
-BoblightServer::BoblightServer(const QJsonObject& config)
+BoblightServer::BoblightServer(const QJsonDocument& config)
 	: QObject()
 	, _hyperion(Hyperion::getInstance())
 	, _server(new QTcpServer(this))
@@ -31,7 +29,7 @@ BoblightServer::BoblightServer(const QJsonObject& config)
 	connect(_server, SIGNAL(newConnection()), this, SLOT(newConnection()));
 
 	// init
-	handleSettingsUpdate(config);
+	handleSettingsUpdate(settings::BOBLSERVER, config);
 }
 
 BoblightServer::~BoblightServer()
@@ -46,18 +44,12 @@ void BoblightServer::start()
 
 	if (!_server->listen(QHostAddress::Any, _port))
 	{
-		throw std::runtime_error("BOBLIGHT ERROR: server could not bind to port");
+		Error(_log, "Could not bind to port '%d', please use an available port", _port);
+		return;
 	}
 	Info(_log, "Started on port %d", _port);
 
-	_hyperion->registerPriority("Boblight", _priority);
 	_hyperion->getComponentRegister().componentStateChanged(COMP_BOBLIGHTSERVER, _server->isListening());
-
-	if(_bonjourService == nullptr)
-	{
-		_bonjourService = new BonjourServiceRegister();
-		_bonjourService->registerService("_hyperiond-bobl._tcp", _port);
-	}
 }
 
 void BoblightServer::stop()
@@ -69,8 +61,8 @@ void BoblightServer::stop()
 		delete connection;
 	}
 	_server->close();
+
 	Info(_log, "Stopped");
-	_hyperion->unRegisterPriority("Boblight");
 	_hyperion->getComponentRegister().componentStateChanged(COMP_BOBLIGHTSERVER, _server->isListening());
 }
 
@@ -103,6 +95,7 @@ void BoblightServer::newConnection()
 	if (socket != nullptr)
 	{
 		Info(_log, "new connection");
+		_hyperion->registerInput(_priority, hyperion::COMP_BOBLIGHTSERVER, QString("Boblight@%1").arg(socket->peerAddress().toString()));
 		BoblightClientConnection * connection = new BoblightClientConnection(socket, _priority);
 		_openConnections.insert(connection);
 
@@ -120,11 +113,15 @@ void BoblightServer::closedConnection(BoblightClientConnection *connection)
 	connection->deleteLater();
 }
 
-void BoblightServer::handleSettingsUpdate(const QJsonObject& obj)
+void BoblightServer::handleSettingsUpdate(const settings::type& type, const QJsonDocument& config)
 {
-	_port = obj["port"].toInt();
-	_priority = obj["priority"].toInt();
-	stop();
-	if(obj["enable"].toBool())
-		start();
+	if(type == settings::BOBLSERVER)
+	{
+		QJsonObject obj = config.object();
+		_port = obj["port"].toInt();
+		_priority = obj["priority"].toInt();
+		stop();
+		if(obj["enable"].toBool())
+			start();
+	}
 }

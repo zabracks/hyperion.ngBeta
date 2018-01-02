@@ -6,7 +6,7 @@
 
 #include <QUrlQuery>
 
-#include <QDebug>
+#include <utils/NetOrigin.h>
 
 const QString & QtHttpServer::HTTP_VERSION = QStringLiteral ("HTTP/1.1");
 
@@ -37,6 +37,7 @@ QtHttpServer::QtHttpServer (QObject * parent)
     : QObject      (parent)
     , m_useSsl     (false)
     , m_serverName (QStringLiteral ("The Qt5 HTTP Server"))
+	, m_netOrigin  (NetOrigin::getInstance())
 {
     m_sockServer = new QtHttpServerWrapper (this);
     connect (m_sockServer, &QtHttpServerWrapper::newConnection, this, &QtHttpServer::onClientConnected);
@@ -55,12 +56,15 @@ QString QtHttpServer::getErrorString (void) const {
 }
 
 void QtHttpServer::start (quint16 port) {
-    if (m_sockServer->listen (QHostAddress::Any, port)) {
-        emit started (m_sockServer->serverPort ());
-    }
-    else {
-        emit error (m_sockServer->errorString ());
-    }
+	if(!m_sockServer->isListening())
+	{
+		if (m_sockServer->listen (QHostAddress::Any, port)) {
+			emit started (m_sockServer->serverPort ());
+		}
+		else {
+			emit error (m_sockServer->errorString ());
+		}
+	}
 }
 
 void QtHttpServer::stop (void) {
@@ -90,23 +94,29 @@ void QtHttpServer::setCertificates (const QList<QSslCertificate> & certs) {
 void QtHttpServer::onClientConnected (void) {
     while (m_sockServer->hasPendingConnections ()) {
         if (QTcpSocket * sock = m_sockServer->nextPendingConnection ()) {
-            connect (sock, &QTcpSocket::disconnected, this, &QtHttpServer::onClientDisconnected);
-            if (m_useSsl) {
-                if (QSslSocket * ssl = qobject_cast<QSslSocket *> (sock)) {
-                    connect (ssl, SslErrorSignal (&QSslSocket::sslErrors), this, &QtHttpServer::onClientSslErrors);
-                    connect (ssl, &QSslSocket::encrypted,                  this, &QtHttpServer::onClientSslEncrypted);
-                    connect (ssl, &QSslSocket::peerVerifyError,            this, &QtHttpServer::onClientSslPeerVerifyError);
-                    connect (ssl, &QSslSocket::modeChanged,                this, &QtHttpServer::onClientSslModeChanged);
-                    ssl->setLocalCertificateChain (m_sslCerts);
-                    ssl->setPrivateKey (m_sslKey);
-                    ssl->setPeerVerifyMode (QSslSocket::AutoVerifyPeer);
-                    ssl->startServerEncryption ();
-                }
-            }
-			qDebug()<<"New client!";
-            QtHttpClientWrapper * wrapper = new QtHttpClientWrapper (sock, this);
-            m_socksClientsHash.insert (sock, wrapper);
-            emit clientConnected (wrapper->getGuid ());
+			if(m_netOrigin->accessAllowed(sock->peerAddress(), sock->localAddress()))
+			{
+	            connect (sock, &QTcpSocket::disconnected, this, &QtHttpServer::onClientDisconnected);
+	            if (m_useSsl) {
+	                if (QSslSocket * ssl = qobject_cast<QSslSocket *> (sock)) {
+	                    connect (ssl, SslErrorSignal (&QSslSocket::sslErrors), this, &QtHttpServer::onClientSslErrors);
+	                    connect (ssl, &QSslSocket::encrypted,                  this, &QtHttpServer::onClientSslEncrypted);
+	                    connect (ssl, &QSslSocket::peerVerifyError,            this, &QtHttpServer::onClientSslPeerVerifyError);
+	                    connect (ssl, &QSslSocket::modeChanged,                this, &QtHttpServer::onClientSslModeChanged);
+	                    ssl->setLocalCertificateChain (m_sslCerts);
+	                    ssl->setPrivateKey (m_sslKey);
+	                    ssl->setPeerVerifyMode (QSslSocket::AutoVerifyPeer);
+	                    ssl->startServerEncryption ();
+	                }
+	            }
+	            QtHttpClientWrapper * wrapper = new QtHttpClientWrapper (sock, this);
+	            m_socksClientsHash.insert (sock, wrapper);
+	            emit clientConnected (wrapper->getGuid ());
+			}
+			else
+			{
+				sock->close();
+			}
         }
     }
 }

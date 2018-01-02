@@ -86,21 +86,6 @@ $(document).ready(function() {
 		requestSetColor(rgb.r, rgb.g, rgb.b,duration);
 	}
 
-	function updateRemote()
-	{
-		if ($('#componentsbutton').length == 0)
-		{
-			$(hyperion).off("cmd-serverinfo",updateRemote);
-		}
-		else
-		{
-			updateInputSelect();
-			updateLedMapping();
-			updateVideoMode();
-			updateEffectlist();
-		}
-	}
-
 	function updateInputSelect()
 	{
 		$('.sstbody').html("");
@@ -122,6 +107,7 @@ $(document).ready(function() {
 			var priority = prios[i].priority;
 			var compId   = prios[i].componentId;
 			var duration = prios[i].duration_ms/1000;
+			var value = "0,0,0";
 			var btn_type = "default";
 			var btn_text = $.i18n('remote_input_setsource_btn');
 			var btn_state = "enabled";
@@ -144,13 +130,16 @@ $(document).ready(function() {
 			if(ip)
 				origin += '<br/><span style="font-size:80%; color:grey;">'+$.i18n('remote_input_ip')+' '+ip+'</span>';
 
+			if("value" in prios[i])
+				value = prios[i].value.RGB;
+
 			switch (compId)
 			{
 				case "EFFECT":
 					owner = $.i18n('remote_effects_label_effects')+'  '+owner;
 					break;
 				case "COLOR":
-					owner = $.i18n('remote_color_label_color')+'  '+'<div style="width:18px; height:18px; border-radius:20px; margin-bottom:-4px; border:1px grey solid; background-color: rgb('+prios[i].value.RGB+'); display:inline-block" title="RGB: ('+prios[i].value.RGB+')"></div>';
+					owner = $.i18n('remote_color_label_color')+'  '+'<div style="width:18px; height:18px; border-radius:20px; margin-bottom:-4px; border:1px grey solid; background-color: rgb('+value+'); display:inline-block" title="RGB: ('+value+')"></div>';
 					break;
 				case  "GRABBER":
 					owner = $.i18n('general_comp_GRABBER')+': ('+owner+')';
@@ -163,6 +152,9 @@ $(document).ready(function() {
 					break;
 				case "UDPLISTENER":
 					owner = $.i18n('general_comp_UDPLISTENER');
+					break;
+				case "PROTOSERVER":
+					owner = "Proto";
 					break;
 			}
 
@@ -194,7 +186,7 @@ $(document).ready(function() {
 
 	function updateLedMapping()
 	{
-		mapping = serverInfo.ledMAppingType;
+		mapping = serverInfo.imageToLedMappingType;
 
 		$('#mappingsbutton').html("");
 		for(var ix = 0; ix < mappingList.length; ix++)
@@ -268,7 +260,7 @@ $(document).ready(function() {
 	function updateVideoMode()
 	{
 		videoModes = ["2D","3DSBS","3DTAB"];
-		currVideoMode = serverInfo.grabbers.videomode;
+		currVideoMode = serverInfo.videomode;
 
 		$('#videomodebtns').html("");
 		for(var ix = 0; ix < videoModes.length; ix++)
@@ -329,14 +321,34 @@ $(document).ready(function() {
 	});
 
 	//force first update
-	updateRemote();
+	updateComponents();
+	updateInputSelect();
+	updateLedMapping();
+	updateVideoMode();
+	updateEffectlist();
 
 	// interval updates
-	$(hyperion).on("cmd-serverinfo",updateRemote);
-
 	$(hyperion).on("components-updated",updateComponents);
-	//first update
-	updateComponents();
+
+	$(hyperion).on("cmd-priorities-update", function(event){
+		serverInfo.priorities = event.response.data.priorities
+		serverInfo.priorities_autoselect = event.response.data.priorities_autoselect
+		updateInputSelect()
+	});
+	$(hyperion).on("cmd-imageToLedMapping-update", function(event){
+		serverInfo.imageToLedMappingType = event.response.data.imageToLedMappingType
+		updateLedMapping()
+	});
+
+	$(hyperion).on("cmd-videomode-update", function(event){
+		serverInfo.videomode = event.response.data.videomode
+		updateVideoMode()
+	});
+
+	$(hyperion).on("cmd-effects-update", function(event){
+		serverInfo.effects = event.response.data.effects
+		updateEffectlist();
+	});
 
 	removeOverlay();
 });

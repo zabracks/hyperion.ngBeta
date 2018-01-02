@@ -10,10 +10,14 @@
 #include <plugin/PluginDefinition.h>
 // bonjour
 #include <bonjour/bonjourrecord.h>
+// videModes
+#include <utils/VideoMode.h>
 
+class Hyperion;
 class ComponentRegister;
 class Plugins;
 class BonjourBrowserWrapper;
+class PriorityMuxer;
 
 class JsonCB : public QObject
 {
@@ -67,13 +71,43 @@ private slots:
 	///
 	void handleBonjourChange(const QMap<QString,BonjourRecord>& bRegisters);
 
+	///
+	/// @brief handle emits from PriorityMuxer
+	///
+	void handlePriorityUpdate();
+
+	///
+	/// @brief Handle imageToLedsMapping updates
+	///
+	void handleImageToLedsMappingChange(const int& mappingType);
+
+	///
+	/// @brief Handle the adjustment update
+	///
+	void handleAdjustmentChange();
+
+	///
+	/// @brief Handle video mode change
+	/// @param mode  The new videoMode
+	///
+	void handleVideoModeChange(const VideoMode& mode);
+
+	///
+	/// @brief Handle effect list change
+	///
+	void handleEffectListChange();
+
 private:
+	/// pointer of Hyperion instance
+	Hyperion* _hyperion;
 	/// pointer of comp register
 	ComponentRegister* _componentRegister;
 	/// plugins pointer
 	Plugins* _plugins;
 	/// Bonjour instance
 	BonjourBrowserWrapper* _bonjour;
+	/// priority muxer instance
+	PriorityMuxer* _prioMuxer;
 	/// contains all available commands
 	QStringList _availableCommands;
 	/// contains active subscriptions

@@ -19,9 +19,14 @@ public:
 	///
 	/// @brief Construct a settings manager and assign a hyperion instance
 	/// @params  hyperion   The parent hyperion instance
-	/// @params  instance   Instance of Hyperion
+	/// @params  instance   Instance number of Hyperion
 	///
-	SettingsManager(Hyperion* hyperion, const quint8& instance);
+	SettingsManager(Hyperion* hyperion, const quint8& instance, const QString& configFile);
+
+	///
+	/// @brief Construct a settings manager for HyperionDaemon
+	///
+	SettingsManager(const quint8& instance, const QString& configFile);
 	~SettingsManager();
 
 	///
@@ -30,14 +35,20 @@ public:
 	/// @param correct If true will correct json against schema before save
 	/// @return        True on success else false
 	///
-	bool saveSettings(QJsonObject config, const bool& correct = false);
+	const bool saveSettings(QJsonObject config, const bool& correct = false);
 
 	///
 	/// @brief get a single setting json from database
 	/// @param  type   The settings::type from enum
 	/// @return        The requested json data as QJsonDocument
 	///
-	QJsonDocument getSetting(const settings::type& type);
+	const QJsonDocument getSetting(const settings::type& type);
+
+	///
+	/// @brief get the full settings object of this instance (with global settings)
+	/// @return        The requested json
+	///
+	const QJsonObject & getSettings() { return _qconfig; };
 
 signals:
 	///
@@ -55,5 +66,7 @@ private:
 	/// instance of database table interface
 	SettingsTable* _sTable;
 	/// the schema
-	QJsonObject _schemaJson;
+	static QJsonObject schemaJson;
+	/// the current config of this instance
+	QJsonObject _qconfig;
 };

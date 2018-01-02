@@ -5,13 +5,16 @@
 
 // Qt includes
 #include <QSet>
+#include <QJsonDocument>
 
 // Hyperion includes
 #include <utils/Logger.h>
 #include <utils/Components.h>
 
+// settings
+#include <utils/settings.h>
+
 class BoblightClientConnection;
-class BonjourServiceRegister;
 class Hyperion;
 class QTcpServer;
 
@@ -28,7 +31,7 @@ public:
 	/// @param hyperion Hyperion instance
 	/// @param port port number on which to start listening for connections
 	///
-	BoblightServer(const QJsonObject& config);
+	BoblightServer(const QJsonDocument& config);
 	~BoblightServer();
 
 	///
@@ -52,6 +55,13 @@ public slots:
 	void stop();
 
 	void componentStateChanged(const hyperion::Components component, bool enable);
+
+	///
+	/// @brief Handle settings update from Hyperion Settingsmanager emit or this constructor
+	/// @param type   settingyType from enum
+	/// @param config configuration object
+	///
+	void handleSettingsUpdate(const settings::type& type, const QJsonDocument& config);
 
 private slots:
 	///
@@ -83,9 +93,4 @@ private:
 
 	// current port
 	uint16_t  _port;
-
-	/// Bonjour Service Register
-	BonjourServiceRegister* _bonjourService = nullptr;
-
-	void handleSettingsUpdate(const QJsonObject& obj);
 };

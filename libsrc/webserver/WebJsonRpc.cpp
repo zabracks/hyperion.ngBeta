@@ -19,9 +19,10 @@ WebJsonRpc::WebJsonRpc(QtHttpRequest* request, QtHttpServer* server, QtHttpClien
 
 void WebJsonRpc::handleMessage(QtHttpRequest* request)
 {
+	QByteArray header = request->getHeader("Authorization");
 	QByteArray data = request->getRawData();
 	_unlocked = true;
-	_jsonAPI->handleMessage(data);
+	_jsonAPI->handleMessage(data,header);
 }
 
 void WebJsonRpc::handleCallback(QJsonObject obj)

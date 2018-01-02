@@ -6,17 +6,16 @@
 #include <bonjour/bonjourserviceregister.h>
 
 // hyperion util includes
-#include "hyperion/ImageProcessorFactory.h"
-#include "hyperion/ImageProcessor.h"
 #include "utils/ColorRgb.h"
 #include "HyperionConfig.h"
+#include <utils/NetOrigin.h>
 
 // qt includes
 #include <QUdpSocket>
 
 using namespace hyperion;
 
-UDPListener::UDPListener(const QJsonObject& config/*const int priority, const int timeout, const QString& address, quint16 listenPort, bool shared*/) :
+UDPListener::UDPListener(const QJsonDocument& config) :
 	QObject(),
 	_hyperion(Hyperion::getInstance()),
 	_server(new QUdpSocket(this)),
@@ -25,7 +24,8 @@ UDPListener::UDPListener(const QJsonObject& config/*const int priority, const in
 	_timeout(0),
 	_log(Logger::getInstance("UDPLISTENER")),
 	_isActive(false),
-	_listenPort(0)
+	_listenPort(0),
+	_netOrigin(NetOrigin::getInstance())
 {
 	Debug(_log, "Instance created");
 	// listen for comp changes
@@ -34,7 +34,7 @@ UDPListener::UDPListener(const QJsonObject& config/*const int priority, const in
 	connect(_server, SIGNAL(readyRead()), this, SLOT(readPendingDatagrams()));
 
 	// init
-	handleSettingsUpdate(config);
+	handleSettingsUpdate(settings::UDPLISTENER, config);
 }
 
 UDPListener::~UDPListener()
@@ -58,7 +58,7 @@ void UDPListener::start()
 
 	if (!_server->bind(_listenAddress, _listenPort, _bondage))
 	{
-		Warning(_log, "Could not bind to %s:%d", _listenAddress.toString().toStdString().c_str(), _listenPort);
+		Error(_log, "Could not bind to %s:%d", _listenAddress.toString().toStdString().c_str(), _listenPort);
 	}
 	else
 	{
@@ -69,7 +69,6 @@ void UDPListener::start()
 			WarningIf( ! joinGroupOK, _log, "Multicast failed");
 		}
 		_isActive = true;
-		_hyperion->registerPriority("UDPLISTENER", _priority);
 		_hyperion->getComponentRegister().componentStateChanged(COMP_UDPLISTENER, _isActive);
 
 		if(_bonjourService == nullptr)
@@ -88,7 +87,7 @@ void UDPListener::stop()
 	_server->close();
 	_isActive = false;
 	Info(_log, "Stopped");
-	_hyperion->unRegisterPriority("UDPLISTENER");
+	_hyperion->clear(_priority);
 	_hyperion->getComponentRegister().componentStateChanged(COMP_UDPLISTENER, _isActive);
 }
 
@@ -120,8 +119,8 @@ void UDPListener::readPendingDatagrams()
 
 		_server->readDatagram(datagram.data(), datagram.size(), &sender, &senderPort);
 
-		processTheDatagram(&datagram, &sender);
-
+		if(_netOrigin->accessAllowed(sender, _listenAddress))
+			processTheDatagram(&datagram, &sender);
 	}
 }
 
@@ -140,18 +139,26 @@ void UDPListener::processTheDatagram(const QByteArray * datagram, const QHostAdd
 		rgb.green = datagram->at(ledIndex*3+1);
 		rgb.blue  = datagram->at(ledIndex*3+2);
 	}
-
-	_hyperion->setColors(_priority, _ledColors, _timeout, -1, hyperion::COMP_UDPLISTENER, sender->toString());
+	// TODO provide a setInput with origin arg to overwrite senders smarter
+	_hyperion->registerInput(_priority, hyperion::COMP_UDPLISTENER, QString("UDPListener@%1").arg(sender->toString()));
+	_hyperion->setInput(_priority, _ledColors, _timeout);
 }
 
-void UDPListener::handleSettingsUpdate(const QJsonObject& obj)
+void UDPListener::handleSettingsUpdate(const settings::type& type, const QJsonDocument& config)
 {
-	QString addr = obj["address"].toString("");
-	_priority = obj["priority"].toInt();
-	_timeout = obj["timeout"].toInt(10000);
-	_listenAddress = addr.isEmpty()? QHostAddress::AnyIPv4 : QHostAddress(addr);
-	_bondage = (obj["shared"].toBool(false)) ? QAbstractSocket::ShareAddress : QAbstractSocket::DefaultForPlatform;
-	stop();
-	if(obj["enable"].toBool())
-		start();
+	if(type == settings::UDPLISTENER)
+	{
+		QJsonObject obj = config.object();
+		// if we change the prio we need to make sure the old one is cleared before we apply the new one!
+		stop();
+
+		QString addr = obj["address"].toString("");
+		_priority = obj["priority"].toInt();
+		_listenPort = obj["port"].toInt();
+		_listenAddress = addr.isEmpty()? QHostAddress::AnyIPv4 : QHostAddress(addr);
+		_bondage = (obj["shared"].toBool(false)) ? QAbstractSocket::ShareAddress : QAbstractSocket::DefaultForPlatform;
+		_timeout = obj["timeout"].toInt(10000);
+		if(obj["enable"].toBool())
+			start();
+	}
 }

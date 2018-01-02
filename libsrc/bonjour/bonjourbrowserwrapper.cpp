@@ -7,15 +7,19 @@
 #include <bonjour/bonjourservicebrowser.h>
 #include <bonjour/bonjourserviceresolver.h>
 
+BonjourBrowserWrapper* BonjourBrowserWrapper::instance = nullptr;
+
 BonjourBrowserWrapper::BonjourBrowserWrapper(QObject * parent)
 	: QObject(parent)
 	, _bonjourResolver(new BonjourServiceResolver(this))
 	, _timerBonjourResolver( new QTimer(this))
 {
+	BonjourBrowserWrapper::instance = this;
 	connect(_bonjourResolver, &BonjourServiceResolver::bonjourRecordResolved, this, &BonjourBrowserWrapper::bonjourRecordResolved);
 
 	connect(_timerBonjourResolver, &QTimer::timeout, this, &BonjourBrowserWrapper::bonjourResolve);
-	_timerBonjourResolver->start(1000);
+	_timerBonjourResolver->setInterval(1000);
+	_timerBonjourResolver->start();
 
 	// browse for _hyperiond-http._tcp
 	browseForServiceType(QLatin1String("_hyperiond-http._tcp"));

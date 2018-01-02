@@ -11,7 +11,12 @@
 #include <leddevice/LedDevice.h>
 #include <utils/Components.h>
 
+// settings
+#include <utils/settings.h>
+
 class QTimer;
+class Logger;
+class Hyperion;
 
 /// Linear Smooting class
 ///
@@ -24,8 +29,10 @@ class LinearColorSmoothing : public LedDevice
 public:
 	/// Constructor
 	/// @param LedDevice the led device
-	/// @param config  The configuration object smoothing
-	LinearColorSmoothing(LedDevice *ledDevice, const QJsonObject& config);
+	/// @param config    The configuration document smoothing
+	/// @param hyperion  The hyperion parent instance
+	///
+	LinearColorSmoothing(LedDevice *ledDevice, const QJsonDocument& config, Hyperion* hyperion);
 
 	/// Destructor
 	virtual ~LinearColorSmoothing();
@@ -64,15 +71,34 @@ public:
 	///
 	bool selectConfig(unsigned cfg, const bool& force = false);
 
+	///
+	/// @ Helper methods to start the timer with delay (see delayStartSmooth())
+	///
+	void startTimerDelayed();
+	void stopTimer();
+
+public slots:
+	///
+	/// @brief Handle settings update from Hyperion Settingsmanager emit or this constructor
+	/// @param type   settingyType from enum
+	/// @param config configuration object
+	///
+	void handleSettingsUpdate(const settings::type& type, const QJsonDocument& config);
+
 private slots:
 	/// Timer callback which writes updated led values to the led device
 	void updateLeds();
 
+	/// Delay timer slot to workaround the leddevice reconstruction segfault (dangling pointer)
+	void delayStartTimer();
+
 	///
-	/// @brief Update the settings of cfg 0 / smoothing
-	/// @param  obj  The config object
+	/// @brief Handle component state changes
+	/// @param component   The component
+	/// @param state       The requested state
 	///
-	void handleSettingsUpdate(const QJsonObject& obj);
+	void componentStateChange(const hyperion::Components component, const bool state);
+
 private:
 	/**
 	 * Pushes the colors into the output queue and popping the head to the led-device
@@ -83,6 +109,12 @@ private:
 
 	/// The led device
 	LedDevice * _ledDevice;
+
+	/// Logger instance
+	Logger* _log;
+
+	/// Hyperion instance
+	Hyperion* _hyperion;
 
 	/// The interval at which to update the leds (msec)
 	int64_t _updateInterval;

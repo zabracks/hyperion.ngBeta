@@ -1,61 +1,41 @@
 
 // proj include
 #include "Plugin.h"
+#include <plugin/PluginModule.h>
+#include <plugin/Plugins.h>
 
-// qt include
-#include <QDebug>
+// hyperion
+#include <hyperion/Hyperion.h>
+#include <utils/Components.h>
 
-// py path seperator
-#ifdef TARGET_WINDOWS
-	#define PY_PATH_SEP ";";
-#else // not windows
-	#define PY_PATH_SEP ":";
-#endif
+// python utils/ global mainthread
+#include <python/PythonUtils.h>
 
-struct PyModuleDef Plugin::moduleDef = {
-	PyModuleDef_HEAD_INIT,
-	"plugin",            /* m_name */
-	"Plugin module",     /* m_doc */
-	-1,                    /* m_size */
-	Plugin::pluginMethods, /* m_methods */
-	NULL,                  /* m_reload */
-	NULL,                  /* m_traverse */
-	NULL,                  /* m_clear */
-	NULL,                  /* m_free */
-};
-
-void Plugin::registerPluginModule()
-{
-	PyImport_AddModule("plugin");
-	PyObject* module = PyModule_Create(&moduleDef);
-
-	PyObject* sys_modules = PyImport_GetModuleDict();
-	PyDict_SetItemString(sys_modules, "plugin", module);
-	Py_DECREF(module);
-}
-
-Plugin::Plugin(PyThreadState* mainState, const PluginDefinition& def, const QString& id,  const QStringList& dPaths)
+Plugin::Plugin(Plugins* plugins, Hyperion * hyperion, const PluginDefinition& def, const QString& id,  const QStringList& dPaths)
 	: QThread()
-	, _mainState(mainState)
+	, _plugins(plugins)
+	, _hyperion(hyperion)
 	, _def(def)
 	, _id(id)
 	, _dPaths(dPaths)
 	, _log(Logger::getInstance("PLUGIN"))
 {
-	// start the thread
-	start();
+
 }
 
 Plugin::~Plugin()
 {
-
+	// decref all callback PyObjects
+	for(auto entry : callbackObjects)
+	{
+		 Py_XDECREF(entry);
+	}
 }
 
 void Plugin::run()
 {
-	qDebug()<<"PLUGIN RUNNER"<<_id;
 	// gil lock
-	PyEval_RestoreThread(_mainState);
+	PyEval_RestoreThread(mainThreadState);
 	// Initialize a new thread state
 	PyThreadState* state = Py_NewInterpreter();
 	// verify we got a thread state
@@ -69,12 +49,14 @@ void Plugin::run()
 	// swap interpreter thread
 	PyThreadState_Swap(state);
 
-	// get plugin module
-	//PyObject *module = PyImport_ImportModule("plugin"); // new ref
-	// create capsule of this instance; add it to the module
-	//PyObject *instance = PyCapsule_New((void *)this, "plugin.inst", NULL);
-	//PyModule_AddObject(module, "plugin", instance);
-	//Py_DECREF(module);
+	// import the buildtin plugin module
+	PyObject * module = PyImport_ImportModule("plugin");
+
+	// add a capsule containing 'this' to the module to be able to retrieve the effect from the callback function
+	PyObject_SetAttrString(module, "__pluginObj", PyCapsule_New(this, nullptr, nullptr));
+
+	// decref the module
+	Py_XDECREF(module);
 
 	// create and apply Python path with dependencies
 	handlePyPath();
@@ -288,21 +270,88 @@ FILE* Plugin::PyFile_AsFileWithMode(PyObject *py_file, const char *mode)
     return f;
 }
 
-// Python method table
-PyMethodDef Plugin::pluginMethods[] = {
-	{"log"              , Plugin::log              , METH_VARARGS, "Write to Hyperion log."},
-	{NULL, NULL, 0, NULL}
-};
-
-
-PyObject* Plugin::log(PyObject *self, PyObject *args)
+void Plugin::printToLog(char* msg, int lvl)
 {
-	//Error(_log,"I was called from a plugin!!!!");
-	return Py_BuildValue("");
+	switch(lvl)
+	{
+		case 0:
+			Info(_log,"%s: %s", QSTRING_CSTR(_def.name), msg);
+			break;
+		case 1:
+			Warning(_log,"%s: %s", QSTRING_CSTR(_def.name), msg);
+			break;
+		case 2:
+			Error(_log,"%s: %s", QSTRING_CSTR(_def.name), msg);
+			break;
+		default:
+			Debug(_log,"%s: %s", QSTRING_CSTR(_def.name), msg);
+	}
 }
 
-Plugin* Plugin::getInstance()
+const int Plugin::setComponentState(const int& comp, const int& enable)
 {
-	// get pointer from capsule
-	return (Plugin*)PyCapsule_Import("plugin.inst", 0);
+	hyperion::Components comps;
+	switch(comp)
+	{
+		case 0:
+			_hyperion->getComponentRegister().setHyperionEnable(bool(enable));
+			comps = hyperion::COMP_ALL;
+			break;
+		case 1:
+			_hyperion->setComponentState(hyperion::COMP_SMOOTHING, bool(enable));
+			comps = hyperion::COMP_SMOOTHING;
+			break;
+		case 2:
+			_hyperion->setComponentState(hyperion::COMP_BLACKBORDER, bool(enable));
+			comps = hyperion::COMP_BLACKBORDER;
+			break;
+		case 3:
+			_hyperion->setComponentState(hyperion::COMP_LEDDEVICE, bool(enable));
+			comps = hyperion::COMP_LEDDEVICE;
+			break;
+		case 4:
+			_hyperion->setComponentState(hyperion::COMP_GRABBER, bool(enable));
+			comps = hyperion::COMP_GRABBER;
+			break;
+		case 5:
+			_hyperion->setComponentState(hyperion::COMP_V4L, bool(enable));
+			comps = hyperion::COMP_V4L;
+			break;
+		default:
+			Warning(_log, "%s: %s", QSTRING_CSTR(_def.name), "Requested an unknown component state change!");
+			return 0;
+	}
+	Debug(_log, "%s: Set component '%s' state to %s", QSTRING_CSTR(_def.name), componentToString(comps), (enable ? "enabled" : "disabled"));
+	return 1;
+}
+
+const QJsonValue Plugin::getSettings()
+{
+	return _plugins->getSettingsOfPlugin(_id);
+}
+
+void Plugin::setColor(const ColorRgb& color, const int& priority, const int& duration)
+{
+	_hyperion->setColor(priority, color, duration, "Plugin: "+_def.name);
+}
+
+int Plugin::setEffect(const char* name, const int& priority, const int& duration)
+{
+	return _hyperion->setEffect(name, priority, duration, "Plugin: "+_def.name);
+}
+
+void Plugin::handlePluginAction(PluginAction action, QString id, bool success, PluginDefinition def)
+{
+	// callback for saved actions
+	if(action == P_SAVED && success && id == _id)
+	{
+		for(const auto & key : callbackObjects.keys())
+		{
+			if(key == "onSettingsChanged")
+			{
+				PyObject* result = PyObject_CallObject(callbackObjects.value(key), NULL); // new ref or null
+				Py_XDECREF(result);
+			}
+		}
+	}
 }

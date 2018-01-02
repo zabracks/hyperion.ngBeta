@@ -9,9 +9,11 @@
 
 using namespace hyperion;
 
-LinearColorSmoothing::LinearColorSmoothing( LedDevice * ledDevice, const QJsonObject& config)
+LinearColorSmoothing::LinearColorSmoothing( LedDevice * ledDevice, const QJsonDocument& config, Hyperion* hyperion)
 	: LedDevice()
 	, _ledDevice(ledDevice)
+	, _log(Logger::getInstance("SMOOTHING"))
+	, _hyperion(hyperion)
 	, _updateInterval(1000)
 	, _settlingTime(200)
 	, _timer(new QTimer(this))
@@ -21,16 +23,22 @@ LinearColorSmoothing::LinearColorSmoothing( LedDevice * ledDevice, const QJsonOb
 	, _pause(false)
 	, _currentConfigId(0)
 {
-	_log = Logger::getInstance("Smoothing");
-	Debug(_log, "Created smoothing");
+	Debug(_log, "Instance created");
+
+	// set initial state to true, as LedDevice::enabled() is true by default
+	_hyperion->getComponentRegister().componentStateChanged(hyperion::COMP_SMOOTHING, true);
+
 	// init cfg 0 (default)
 	_cfgList.append({false, 200, 25, 0});
-	handleSettingsUpdate(config);
+	handleSettingsUpdate(settings::SMOOTHING, config);
 
 	// add pause on cfg 1
 	SMOOTHING_CFG cfg = {true};
 	_cfgList.append(cfg);
 
+	// listen for comp changes
+	connect(_hyperion, &Hyperion::componentStateChanged, this, &LinearColorSmoothing::componentStateChange);
+	// timer
 	connect(_timer, SIGNAL(timeout()), this, SLOT(updateLeds()));
 }
 
@@ -38,26 +46,23 @@ LinearColorSmoothing::~LinearColorSmoothing()
 {
 	// Make sure to switch off the underlying led-device (because switchOff is no longer forwarded)
 	_ledDevice->switchOff();
-	delete _ledDevice;
 }
 
-void LinearColorSmoothing::handleSettingsUpdate(const QJsonObject& obj)
+void LinearColorSmoothing::handleSettingsUpdate(const settings::type& type, const QJsonDocument& config)
 {
-	_continuousOutput = obj["continuousOutput"].toBool(true);
-	SMOOTHING_CFG cfg = {false, obj["time_ms"].toInt(200), unsigned(1000.0/obj["updateFrequency"].toDouble(25.0)), unsigned(obj["updateDelay"].toInt(0))};
-	_cfgList[0] = cfg;
-	// if current id is 0, we need to apply the settings (forced)
-	if(!_currentConfigId)
-		selectConfig(0, true);
-
-	if(enabled() != obj["enable"].toBool(true))
+	if(type == settings::SMOOTHING)
 	{
-		if(obj["enable"].toBool(true))
-			setEnable(true);
-		else
-			setEnable(false);
-	}
+		QJsonObject obj = config.object();
+		_continuousOutput = obj["continuousOutput"].toBool(true);
+		SMOOTHING_CFG cfg = {false, obj["time_ms"].toInt(200), unsigned(1000.0/obj["updateFrequency"].toDouble(25.0)), unsigned(obj["updateDelay"].toInt(0))};
+		_cfgList[0] = cfg;
+		// if current id is 0, we need to apply the settings (forced)
+		if(!_currentConfigId)
+			selectConfig(0, true);
 
+		if(enabled() != obj["enable"].toBool(true))
+			setEnable(obj["enable"].toBool(true));
+	}
 }
 
 int LinearColorSmoothing::write(const std::vector<ColorRgb> &ledValues)
@@ -146,6 +151,7 @@ void LinearColorSmoothing::queueColors(const std::vector<ColorRgb> & ledColors)
 		// No output delay => immediate write
 		if ( _writeToLedsEnable && !_pause)
 			_ledDevice->setLedValues(ledColors);
+
 	}
 	else
 	{
@@ -168,6 +174,11 @@ void LinearColorSmoothing::queueColors(const std::vector<ColorRgb> & ledColors)
 	}
 }
 
+void LinearColorSmoothing::componentStateChange(const hyperion::Components component, const bool state)
+{
+	if(component == hyperion::COMP_SMOOTHING)
+		setEnable(state);
+}
 
 void LinearColorSmoothing::setEnable(bool enable)
 {
@@ -178,6 +189,8 @@ void LinearColorSmoothing::setEnable(bool enable)
 		_timer->stop();
 		_previousValues.clear();
 	}
+	// update comp register
+	_hyperion->getComponentRegister().componentStateChanged(hyperion::COMP_SMOOTHING, enable);
 }
 
 void LinearColorSmoothing::setPause(bool pause)
@@ -224,4 +237,19 @@ bool LinearColorSmoothing::selectConfig(unsigned cfg, const bool& force)
 	// reset to default
 	_currentConfigId = 0;
 	return false;
+}
+
+void LinearColorSmoothing::startTimerDelayed()
+{
+	QTimer::singleShot(500, this, SLOT(delayStartTimer()));
+}
+
+void LinearColorSmoothing::stopTimer()
+{
+	_timer->stop();
+}
+
+void LinearColorSmoothing::delayStartTimer()
+{
+	_timer->start();
 }

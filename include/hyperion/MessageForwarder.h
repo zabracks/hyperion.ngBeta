@@ -12,22 +12,21 @@
 #include <QHostAddress>
 #include <QJsonObject>
 #include <QJsonArray>
+#include <QJsonDocument>
 
 // Utils includes
 #include <utils/ColorRgb.h>
+#include <utils/settings.h>
+#include <utils/Logger.h>
 
 class Hyperion;
 
-class MessageForwarder
+class MessageForwarder : public QObject
 {
+	Q_OBJECT
 public:
 
-	struct JsonSlaveAddress {
-		QHostAddress addr;
-		quint16 port;
-	};
-
-	MessageForwarder(Hyperion* hyperion, const QJsonObject & config);
+	MessageForwarder(Hyperion* hyperion, const QJsonDocument & config);
 	~MessageForwarder();
 
 	void addJsonSlave(QString slave);
@@ -36,10 +35,20 @@ public:
 	bool protoForwardingEnabled();
 	bool jsonForwardingEnabled();
 	bool forwardingEnabled() { return jsonForwardingEnabled() || protoForwardingEnabled(); };
-	QStringList getProtoSlaves();
-	QList<MessageForwarder::JsonSlaveAddress> getJsonSlaves();
+	QStringList getProtoSlaves() const { return _protoSlaves; };
+	QStringList getJsonSlaves() const { return _jsonSlaves; };
+
+private slots:
+	///
+	/// @brief Handle settings update from Hyperion Settingsmanager emit or this constructor
+	/// @param type   settingyType from enum
+	/// @param config configuration object
+	///
+	void handleSettingsUpdate(const settings::type& type, const QJsonDocument& config);
 
 private:
-	QStringList               _protoSlaves;
-	QList<MessageForwarder::JsonSlaveAddress>   _jsonSlaves;
+	Hyperion* _hyperion;
+	Logger*   _log;
+	QStringList   _protoSlaves;
+	QStringList   _jsonSlaves;
 };

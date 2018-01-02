@@ -1,29 +1,35 @@
 #pragma once
 #include <QString>
+#include <QJsonDocument>
 
+///
+/// @brief Provide util methods to work with SettingsManager class
+///
 namespace settings {
 // all available settings sections
 enum type  {
-	S_BGEFFECT,
-	S_FGEFFECT,
-	S_BLACKB,
-	S_BOBLSERVER,
-	S_COLOR,
-	S_DEVICE,
-	S_EFFECTS,
-	S_FORWARD,
-	S_PCAPTURE,
-	S_GENERAL,
-	S_V4L2,
-	S_JSONSERVER,
-	S_LEDCONFIG,
-	S_LEDS,
-	S_LOGGER,
-	S_PROTOSERVER,
-	S_SMOOTHING,
-	S_UDPLISTENER,
-	S_WEBSERVER,
-	S_INVALID
+	BGEFFECT,
+	FGEFFECT,
+	BLACKBORDER,
+	BOBLSERVER,
+	COLOR,
+	DEVICE,
+	EFFECTS,
+	NETFORWARD,
+	SYSTEMCAPTURE,
+	GENERAL,
+	V4L2,
+	JSONSERVER,
+	LEDCONFIG,
+	LEDS,
+	LOGGER,
+	PROTOSERVER,
+	SMOOTHING,
+	UDPLISTENER,
+	WEBSERVER,
+	INSTCAPTURE,
+	NETWORK,
+	INVALID
 };
 
 ///
@@ -35,26 +41,28 @@ inline QString typeToString(const type& type)
 {
 	switch (type)
 	{
-		case S_BGEFFECT:    return "backgroundEffect";
-		case S_FGEFFECT:    return "foregroundEffect";
-		case S_BLACKB:      return "blackborderdetector";
-		case S_BOBLSERVER:  return "boblightServer";
-		case S_COLOR:       return "color";
-		case S_DEVICE:      return "device";
-		case S_EFFECTS:     return "effects";
-		case S_FORWARD:     return "forwarder";
-		case S_PCAPTURE:    return "framegrabber";
-		case S_GENERAL:     return "general";
-		case S_V4L2:        return "grabberV4L2";
-		case S_JSONSERVER:  return "jsonServer";
-		case S_LEDCONFIG:   return "ledConfig";
-		case S_LEDS:        return "leds";
-		case S_LOGGER:      return "logger";
-		case S_PROTOSERVER: return "protoServer";
-		case S_SMOOTHING:   return "smoothing";
-		case S_UDPLISTENER: return "udpListener";
-		case S_WEBSERVER:   return "webConfig";
-		default: return "invalid";
+		case BGEFFECT:      return "backgroundEffect";
+		case FGEFFECT:      return "foregroundEffect";
+		case BLACKBORDER:   return "blackborderdetector";
+		case BOBLSERVER:    return "boblightServer";
+		case COLOR:         return "color";
+		case DEVICE:        return "device";
+		case EFFECTS:       return "effects";
+		case NETFORWARD:    return "forwarder";
+		case SYSTEMCAPTURE: return "framegrabber";
+		case GENERAL:       return "general";
+		case V4L2:          return "grabberV4L2";
+		case JSONSERVER:    return "jsonServer";
+		case LEDCONFIG:     return "ledConfig";
+		case LEDS:          return "leds";
+		case LOGGER:        return "logger";
+		case PROTOSERVER:   return "protoServer";
+		case SMOOTHING:     return "smoothing";
+		case UDPLISTENER:   return "udpListener";
+		case WEBSERVER:     return "webConfig";
+		case INSTCAPTURE:   return "instCapture";
+		case NETWORK:       return "network";
+		default:            return "invalid";
 	}
 }
 
@@ -65,25 +73,27 @@ inline QString typeToString(const type& type)
 ///
 inline type stringToType(const QString& type)
 {
-	if      (type == "backgroundEffect")     return S_BGEFFECT;
-	else if (type == "foregroundEffect")     return S_FGEFFECT;
-	else if (type == "blackborderdetector")  return S_BLACKB;
-	else if (type == "boblightServer")       return S_BOBLSERVER;
-	else if (type == "color")                return S_COLOR;
-	else if (type == "device")               return S_DEVICE;
-	else if (type == "effects")              return S_EFFECTS;
-	else if (type == "forwarder")            return S_FORWARD;
-	else if (type == "framegrabber")         return S_PCAPTURE;
-	else if (type == "general")              return S_GENERAL;
-	else if (type == "grabberV4L2")          return S_V4L2;
-	else if (type == "jsonServer")           return S_JSONSERVER;
-	else if (type == "ledConfig")            return S_LEDCONFIG;
-	else if (type == "leds")                 return S_LEDS;
-	else if (type == "logger")               return S_LOGGER;
-	else if (type == "protoServer")          return S_PROTOSERVER;
-	else if (type == "smoothing")            return S_SMOOTHING;
-	else if (type == "udpListener")          return S_UDPLISTENER;
-	else if (type == "webConfig")            return S_WEBSERVER;
-	else                                     return S_INVALID;
+	if (type == "backgroundEffect")     return BGEFFECT;
+	if (type == "foregroundEffect")     return FGEFFECT;
+	if (type == "blackborderdetector")  return BLACKBORDER;
+	if (type == "boblightServer")       return BOBLSERVER;
+	if (type == "color")                return COLOR;
+	if (type == "device")               return DEVICE;
+	if (type == "effects")              return EFFECTS;
+	if (type == "forwarder")            return NETFORWARD;
+	if (type == "framegrabber")         return SYSTEMCAPTURE;
+	if (type == "general")              return GENERAL;
+	if (type == "grabberV4L2")          return V4L2;
+	if (type == "jsonServer")           return JSONSERVER;
+	if (type == "ledConfig")            return LEDCONFIG;
+	if (type == "leds")                 return LEDS;
+	if (type == "logger")               return LOGGER;
+	if (type == "protoServer")          return PROTOSERVER;
+	if (type == "smoothing")            return SMOOTHING;
+	if (type == "udpListener")          return UDPLISTENER;
+	if (type == "webConfig")            return WEBSERVER;
+	if (type == "instCapture")          return INSTCAPTURE;
+	if (type == "network")              return NETWORK;
+	                                    return INVALID;
 }
 };

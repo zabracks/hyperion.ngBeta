@@ -1,6 +1,6 @@
 // project
 #include <plugin/Files.h>
-#include "PDBWrapper.h"
+#include <db/PluginTable.h>
 
 // hyperion
 #include <utils/JsonUtils.h>
@@ -15,7 +15,7 @@
 // QuaZip
 #include <JlCompress.h>
 
-Files::Files(const QString& rootPath, const QString& id, PDBWrapper* PDB)
+Files::Files(const QString& rootPath, const QString& id, PluginTable* PDB)
 	: QObject()
 	, _log(Logger::getInstance("PLUGINS"))
 	, _id(id)

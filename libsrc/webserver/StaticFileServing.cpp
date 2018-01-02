@@ -8,52 +8,29 @@
 #include <QFile>
 #include <QFileInfo>
 #include <QResource>
-#include <bonjour/bonjourserviceregister.h>
-#include <bonjour/bonjourrecord.h>
 #include <exception>
 
-StaticFileServing::StaticFileServing (Hyperion *hyperion, QString baseUrl, quint16 port, QObject * parent)
+StaticFileServing::StaticFileServing (Hyperion *hyperion, QObject * parent)
 	:  QObject   (parent)
 	, _hyperion(hyperion)
-	, _baseUrl (baseUrl)
-	, _cgi(hyperion, baseUrl, this)
+	, _baseUrl ()
+	, _cgi(hyperion, this)
 	, _log(Logger::getInstance("WEBSERVER"))
 {
 	Q_INIT_RESOURCE(WebConfig);
 
 	_mimeDb = new QMimeDatabase;
-
-	_server = new QtHttpServer (this);
-	_server->setServerName (QStringLiteral ("Hyperion Webserver"));
-
-	connect (_server, &QtHttpServer::started,           this, &StaticFileServing::onServerStarted);
-	connect (_server, &QtHttpServer::stopped,           this, &StaticFileServing::onServerStopped);
-	connect (_server, &QtHttpServer::error,             this, &StaticFileServing::onServerError);
-	connect (_server, &QtHttpServer::requestNeedsReply, this, &StaticFileServing::onRequestNeedsReply);
-
-	_server->start (port);
 }
 
 StaticFileServing::~StaticFileServing ()
 {
-	_server->stop ();
+
 }
 
-void StaticFileServing::onServerStarted (quint16 port)
+void StaticFileServing::setBaseUrl(const QString& url)
 {
-	Info(_log, "Started on port %d name '%s'", port ,_server->getServerName().toStdString().c_str());
-
-	BonjourServiceRegister *bonjourRegister_http = new BonjourServiceRegister();
-	bonjourRegister_http->registerService("_hyperiond-http._tcp", port);
-}
-
-void StaticFileServing::onServerStopped () {
-	Info(_log, "Stopped %s", _server->getServerName().toStdString().c_str());
-}
-
-void StaticFileServing::onServerError (QString msg)
-{
-	Error(_log, "%s", msg.toStdString().c_str());
+	_baseUrl = url;
+	_cgi.setBaseUrl(url);
 }
 
 void StaticFileServing::printErrorToReply (QtHttpReply * reply, QtHttpReply::StatusCode code, QString errorMessage)
@@ -119,7 +96,6 @@ void StaticFileServing::onRequestNeedsReply (QtHttpRequest * request, QtHttpRepl
 			}
 			return;
 		}
-		Q_INIT_RESOURCE(WebConfig);
 
 		QFileInfo info(_baseUrl % "/" % path);
 		if ( path == "/" || path.isEmpty()  )

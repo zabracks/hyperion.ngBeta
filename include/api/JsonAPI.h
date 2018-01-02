@@ -37,8 +37,8 @@ struct find_effect: std::unary_function<EffectDefinition, bool>
 	}
 };
 
-class ImageProcessor;
 class JsonCB;
+class AuthManager;
 
 class JsonAPI : public QObject
 {
@@ -60,19 +60,14 @@ public:
 	///
 	/// @param message the incoming message as string
 	///
-	void handleMessage(const QString & message);
-
-	///
-	/// send a forced serverinfo to a client
-	///
-	void forceServerInfo();
+	void handleMessage(const QString & message, const QString& httpAuthHeader = "");
 
 public slots:
 	/// _timer_ledcolors requests ledcolor updates (if enabled)
 	void streamLedcolorsUpdate();
 
 	/// push images whenever hyperion emits (if enabled)
-	void setImage(int priority, const Image<ColorRgb> & image, int duration_ms);
+	void setImage(const Image<ColorRgb> & image);
 
 	/// process and push new log messages from logger (if enabled)
 	void incommingLogMessage(Logger::T_LOG_MESSAGE);
@@ -81,14 +76,24 @@ private slots:
 	/// process plugin actions from Plugins
 	void doPluginAction(PluginAction action, QString id, bool success, PluginDefinition def);
 
-	// helper slot to pipe jsonCB callback to the parent client
-	//void forwardJsonCB(QJsonObject obj){ emit callbackMessage(obj); };
+	///
+	/// @brief Handle emits from AuthManager of new request, just _userAuthorized sessions are allowed to handle them
+	/// @param id       The id of the request
+	/// @param  The comment which needs to be accepted
+	///
+	void handlePendingTokenRequest(const QString& id, const QString& comment);
+
+	///
+	/// @brief Handle emits from AuthManager of accepted/denied/timeouts token request, just if QObject matches with this instance we are allowed to send response.
+	/// @param  success If true the request was accepted else false and no token was created
+	/// @param  caller  The origin caller instance who requested this token
+	/// @param  token   The new token that is now valid
+	/// @param  comment The comment that was part of the request
+	/// @param  id      The id that was part of the request
+	///
+	void handleTokenResponse(const bool& success, QObject* caller, const QString& token, const QString& comment, const QString& id);
 
 signals:
-	///
-	/// Signal which is emitted when a sendSuccessReply() has been executed
-	///
-	void pushReq();
 	///
 	/// Signal emits with the reply message provided with handleMessage()
 	///
@@ -105,6 +110,14 @@ signals:
 	void pluginAction(PluginAction action, QString id, bool success = true, PluginDefinition def = PluginDefinition());
 
 private:
+	/// Auth management pointer
+	AuthManager* _authManager;
+	/// Reflect auth status of this client
+	bool _authorized;
+	bool _userAuthorized;
+	/// Reflect auth required
+	bool _apiAuthRequired;
+
 	// The JsonCB instance which handles data subscription/notifications
 	JsonCB* _jsonCB;
 	// true if further callbacks are forbidden (http)
@@ -117,9 +130,6 @@ private:
 
 	/// Hyperion instance
 	Hyperion* _hyperion;
-
-	/// The processor for translating images to led-values
-	ImageProcessor * _imageProcessor;
 
 	/// timer for ledcolors streaming
 	QTimer _timer_ledcolors;
@@ -140,9 +150,6 @@ private:
 
 	/// Plugins instance
 	Plugins* _plugins;
-
-	/// if true the management for plugins is enabled
-	bool _managePlugins = false;
 
 	///
 	/// Handle an incoming JSON Color message
@@ -263,11 +270,20 @@ private:
 	///
 	void handleVideoModeCommand(const QJsonObject & message, const QString &command, const int tan);
 
-	/// Handle an incoming JSON Management message
+	/// Handle an incoming JSON plugin message
 	///
 	/// @param message the incoming message
 	///
-	void handleManagementCommand(const QJsonObject & message, const QString &command, const int tan);
+	void handleAuthorizeCommand(const QJsonObject & message, const QString &command, const int tan);
+
+	///
+	/// Handle HTTP on-the-fly token authorization
+	/// @param command  The command
+	/// @param tan      The tan
+	/// @param token    The token to verify
+	/// @return True on succcess else false (pushes failed client feedback)
+	///
+	const bool handleHTTPAuth(const QString& command, const int& tan, const QString& token);
 
 	/// Handle an incoming JSON plugin message
 	///
@@ -288,7 +304,7 @@ private:
 	///
 	/// Send a standard reply indicating success with data
 	///
-	void sendSuccessDataReply(const QJsonObject &data, const QString &command="", const int &tan=0);
+	void sendSuccessDataReply(const QJsonDocument &doc, const QString &command="", const int &tan=0);
 
 	///
 	/// Send an error message back to the client

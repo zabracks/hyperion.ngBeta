@@ -15,25 +15,24 @@ class CgiHandler : public QObject {
 	Q_OBJECT
 
 public:
-	CgiHandler (Hyperion * hyperion, QString baseUrl, QObject * parent = NULL);
+	CgiHandler (Hyperion * hyperion, QObject * parent = NULL);
 	virtual ~CgiHandler (void);
 
+	void setBaseUrl(const QString& url);
 	void exec(const QStringList & args,QtHttpRequest * request, QtHttpReply * reply);
-	
+
 	// cgi commands
 	void cmd_cfg_jsonserver();
 	void cmd_runscript ();
-	
+
 private:
 	Hyperion*           _hyperion;
 	QtHttpReply *       _reply;
 	QtHttpRequest *     _request;
 	QStringList         _args;
 	const QJsonObject & _hyperionConfig;
-	const QString       _baseUrl;
+	QString             _baseUrl;
 	Logger *            _log;
 };
 
 #endif // CGIHANDLER_H
-
- 
