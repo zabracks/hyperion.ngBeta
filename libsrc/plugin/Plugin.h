@@ -9,10 +9,20 @@
 #include <utils/Logger.h>
 #include <plugin/PluginDefinition.h>
 #include <utils/ColorRgb.h>
+#include <utils/Components.h>
 
 // qt incl
 #include <QThread>
 #include <QStringList>
+
+class acquireGIL
+{
+public:
+	inline acquireGIL() { state = PyGILState_Ensure(); };
+	inline ~acquireGIL() { PyGILState_Release(state); };
+private:
+	PyGILState_STATE state;
+};
 
 class Hyperion;
 class Plugins;
@@ -103,7 +113,7 @@ public:
 	/// @brief Set a single color with a specific timeout
 	/// @param  color   The RGB color
 	/// @param  priority The priority channel
-	/// @param  timeout  The timeout
+	/// @param  duration  The duration
 	///
 	void setColor(const ColorRgb& color, const int& priority, const int& duration);
 
@@ -127,4 +137,10 @@ public slots:
 	/// @param success  true if action was a success, else false
 	///
 	void handlePluginAction(PluginAction action, QString id, bool success = true, PluginDefinition def = PluginDefinition());
+
+	/// @brief called when a component state is changed
+	/// @param comp   the component
+	/// @param state	the changed state
+	///
+	void onCompStateChanged(const hyperion::Components comp, bool state);
 };
