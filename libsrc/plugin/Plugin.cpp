@@ -14,12 +14,14 @@ Plugin::Plugin(Plugins* plugins, Hyperion * hyperion, const PluginDefinition& de
 	: QThread()
 	, _plugins(plugins)
 	, _hyperion(hyperion)
+	, _prioMuxer(hyperion->getMuxerInstance())
 	, _def(def)
 	, _id(id)
 	, _dPaths(dPaths)
 	, _log(Logger::getInstance("PLUGIN"))
 {
-
+	// prio mixer signal
+	connect(_prioMuxer, &PriorityMuxer::visiblePriorityChanged, this, &Plugin::onVisiblePriorityChanged, Qt::QueuedConnection);
 }
 
 Plugin::~Plugin()
@@ -54,6 +56,7 @@ void Plugin::run()
 	// for callback enums add an integer constant to module as name
 	PyModule_AddIntConstant(module, "ON_COMP_STATE_CHANGED", ON_COMP_STATE_CHANGED);
 	PyModule_AddIntConstant(module, "ON_SETTINGS_CHANGED", ON_SETTINGS_CHANGED);
+	PyModule_AddIntConstant(module, "ON_VISIBLE_PRIORITY_CHANGED", ON_VISIBLE_PRIORITY_CHANGED);
 
 	// decref the module
 	Py_XDECREF(module);
@@ -91,7 +94,6 @@ void Plugin::run()
 		if (!result && PyErr_Occurred()) // borrowed
 		{
 			printException();
-			_error = true;
 		}
 		Py_XDECREF(result);  // release "result"
 		Py_DECREF(main_dict);  // release "main_dict"
@@ -167,6 +169,8 @@ void Plugin::addNativePath(const std::string& path)
 
 void Plugin::printException(void)
 {
+	_error = true;
+
 	Error(_log,"###### PYTHON EXCEPTION ######");
 	Error(_log,"## In plugin '%s' id '%s'", QSTRING_CSTR(_def.name), QSTRING_CSTR(_id));
 	/* Objects all initialized to NULL for Py_XDECREF */
@@ -348,10 +352,23 @@ void Plugin::handlePluginAction(PluginAction action, QString id, bool success, P
 		auto it = callbackObjects.find("ON_SETTINGS_CHANGED");
 		if (it != callbackObjects.end())
 		{
-			// TODO :-)
-			// see function onCompStateChanged() for example
-			// If you need help, just ask
-			return;
+			PyObject *data = nullptr;
+			// Verify that ON_SETTINGS_CHANGED is a proper callable
+			if (it.value() && PyCallable_Check(it.value()))
+			{
+				// Acquire GIL
+				acquireGIL lock;
+
+				// Call the callback function and return the result of the call on success, or NULL on failure.
+				data = PyObject_CallObject(it.value(), NULL);
+			}
+
+			// handle exception
+			if (!data && PyErr_Occurred())
+				printException();
+
+			// release "data" when done
+			Py_XDECREF(data);
 		}
 	}
 }
@@ -371,6 +388,32 @@ void Plugin::onCompStateChanged(const hyperion::Components comp, bool state)
 
 			// Call the callback function and return the result of the call on success, or NULL on failure.
 			data = PyObject_CallFunctionObjArgs(it.value(), PyUnicode_FromString(componentToIdString(comp)), PyBool_FromLong(state), NULL);
+		}
+
+		// handle exception
+		if (!data && PyErr_Occurred())
+			printException();
+
+		// release "data" when done
+		Py_XDECREF(data);
+	}
+}
+
+void Plugin::onVisiblePriorityChanged(const quint8& priority)
+{
+	auto it = callbackObjects.find("ON_VISIBLE_PRIORITY_CHANGED");
+	if (it != callbackObjects.end())
+	{
+		PyObject *data = nullptr;
+
+		// Verify that ON_VISIBLE_PRIORITY_CHANGED is a proper callable
+		if (it.value() && PyCallable_Check(it.value()))
+		{
+			// Acquire GIL
+			acquireGIL lock;
+
+			// Call the callback function and return the result of the call on success, or NULL on failure.
+			data = PyObject_CallFunctionObjArgs(it.value(), PyLong_FromUnsignedLong(priority), NULL);
 		}
 
 		// handle exception

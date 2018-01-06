@@ -29,7 +29,14 @@ const bool NetOrigin::accessAllowed(const QHostAddress& address, const QHostAddr
 			return false;
 		}
 	}
-	// IPv6 handling?!
+	else if(address.protocol() == QAbstractSocket::IPv6Protocol)
+	{
+		if(!address.isInSubnet(local, 64)) // 2001:db8:abcd:0012:XXXX:XXXX:XXXX:XXXX; IPv6 0-128
+		{
+			Warning(_log,"Client connection with IP address '%s' has been rejected! It's not whitelisted/internet access denied.",QSTRING_CSTR(address.toString()));
+			return false;
+		}
+	}
 	return true;
 }
 

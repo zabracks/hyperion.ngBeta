@@ -10,6 +10,11 @@ Plugins::Plugins(Hyperion* hyperion)
 	, _PDB(new PluginTable(_hyperion->getConfigFileName()))
 	, _files(_hyperion->getRootPath(), _hyperion->getConfigFileName(), _PDB)
 {
+	// register metyTypes for QueuedConnection
+	qRegisterMetaType<PluginAction>("PluginAction");
+	qRegisterMetaType<PluginDefinition>("PluginDefinition");
+	qRegisterMetaType<hyperion::Components>("hyperion::Components");
+
 	// from files
 	connect(&_files, &Files::pluginAction, this, &Plugins::doPluginAction);
 	// to files
@@ -17,6 +22,7 @@ Plugins::Plugins(Hyperion* hyperion)
 
 	// file handling init after database creation and signal link
 	_files.init();
+
 }
 
 Plugins::~Plugins()
@@ -174,11 +180,10 @@ void Plugins::start(QString id)
 	// listen for plugin thread exit
 	connect(newPlugin, &QThread::finished, this, &Plugins::pluginFinished);
 	// listen for pluginActions
-	connect(this, &Plugins::pluginAction, newPlugin, &Plugin::handlePluginAction);
+	connect(this, &Plugins::pluginAction, newPlugin, &Plugin::handlePluginAction, Qt::QueuedConnection);
 
 	// listen for componentStateChanged
-	qRegisterMetaType<hyperion::Components>("hyperion::Components");
-	connect(_hyperion, SIGNAL(componentStateChanged(hyperion::Components,bool)), newPlugin, SLOT(onCompStateChanged(hyperion::Components,bool)));
+	connect(_hyperion, SIGNAL(componentStateChanged(hyperion::Components,bool)), newPlugin, SLOT(onCompStateChanged(hyperion::Components,bool)), Qt::QueuedConnection);
 
 	// start
 	newPlugin->start();

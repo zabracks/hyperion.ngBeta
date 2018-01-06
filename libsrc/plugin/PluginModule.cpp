@@ -26,12 +26,12 @@ struct PyModuleDef PluginModule::moduleDef = {
 
 // Python method table
 PyMethodDef PluginModule::pluginMethods[] = {
-	{"log",			PluginModule::wrapLog,			METH_VARARGS,	"Write a message to the log"},
-	{"abort",		PluginModule::wrapAbort,		METH_NOARGS,	"Check if the plugin should abort execution."},
-	{"getSettings",		PluginModule::wrapGetSettings,		METH_NOARGS,	"Get the settings object"},
+	{"log",					PluginModule::wrapLog,					METH_VARARGS,	"Write a message to the log"},
+	{"abort",				PluginModule::wrapAbort,				METH_NOARGS,	"Check if the plugin should abort execution."},
+	{"getSettings",			PluginModule::wrapGetSettings,			METH_NOARGS,	"Get the settings object"},
 	{"setComponentState",	PluginModule::wrapSetComponentState,	METH_VARARGS,	"Set a component to a state, returns false if comp is not found."},
-	{"setColor",		PluginModule::wrapSetColor,		METH_VARARGS,	"Set a single color"},
-	{"setEffect",		PluginModule::wrapSetEffect,		METH_VARARGS,	"Set a effect by name. Timeout and priority are optional"},
+	{"setColor",			PluginModule::wrapSetColor,				METH_VARARGS,	"Set a single color"},
+	{"setEffect",			PluginModule::wrapSetEffect,			METH_VARARGS,	"Set a effect by name. Timeout and priority are optional"},
 
 	// callback methods
 	{"registerCallback",	PluginModule::registerCallback,		METH_VARARGS,	"Register a callback function."},
@@ -241,6 +241,7 @@ PyObject *PluginModule::registerCallback(PyObject *, PyObject *args)
 		{
 			case ON_SETTINGS_CHANGED:
 			case ON_COMP_STATE_CHANGED:
+			case ON_VISIBLE_PRIORITY_CHANGED:
 				getPlugin()->callbackObjects.insert(callbackTypeToString(callback_type), new_callback);
 				break;
 			default:
@@ -265,6 +266,7 @@ PyObject *PluginModule::unRegisterCallback(PyObject *, PyObject *args)
 		{
 			case ON_SETTINGS_CHANGED:
 			case ON_COMP_STATE_CHANGED:
+			case ON_VISIBLE_PRIORITY_CHANGED:
 				getPlugin()->callbackObjects.remove(callbackTypeToString(callback_type));
 				break;
 			default:

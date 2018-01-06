@@ -26,6 +26,7 @@ private:
 
 class Hyperion;
 class Plugins;
+class PriorityMuxer;
 
 class Plugin : public QThread
 {
@@ -53,6 +54,8 @@ private:
 	Plugins* _plugins;
 	/// Instance pointer of Hyperion
 	Hyperion* _hyperion;
+	/// prio muxer
+	PriorityMuxer* _prioMuxer;
 	/// definition of this instance
 	PluginDefinition _def;
 	/// id of the plugin
@@ -138,9 +141,16 @@ public slots:
 	///
 	void handlePluginAction(PluginAction action, QString id, bool success = true, PluginDefinition def = PluginDefinition());
 
+	///
 	/// @brief called when a component state is changed
 	/// @param comp   the component
 	/// @param state	the changed state
 	///
 	void onCompStateChanged(const hyperion::Components comp, bool state);
+
+	///
+	/// @brief called when the visible priorty has changed
+	/// @param comp   the prioriry
+	///
+	void onVisiblePriorityChanged(const quint8& priority);
 };
