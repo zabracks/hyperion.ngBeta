@@ -94,7 +94,7 @@ private:
 	Logger * _log;
 
 	/// Bonjour Service Register
-	BonjourServiceRegister* _bonjourService = nullptr;
+	BonjourServiceRegister* _serviceRegister = nullptr;
 
 	/// state of connection
 	bool _isActive;

@@ -54,6 +54,7 @@ BonjourServiceRegister::~BonjourServiceRegister()
 
 void BonjourServiceRegister::registerService(const QString& service, const int& port)
 {
+	_port = port;
 	// zeroconf $configname@$hostname:port
 	QString prettyName = Hyperion::getInstance()->getQJsonConfig()["general"].toObject()["name"].toString();
 	registerService(

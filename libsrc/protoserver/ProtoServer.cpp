@@ -67,7 +67,13 @@ void ProtoServer::start()
 
 	if(_serviceRegister == nullptr)
 	{
-		_serviceRegister = new BonjourServiceRegister();
+		_serviceRegister = new BonjourServiceRegister(this);
+		_serviceRegister->registerService("_hyperiond-proto._tcp", _port);
+	}
+	else if( _serviceRegister->getPort() != _port)
+	{
+		delete _serviceRegister;
+		_serviceRegister = new BonjourServiceRegister(this);
 		_serviceRegister->registerService("_hyperiond-proto._tcp", _port);
 	}
 }

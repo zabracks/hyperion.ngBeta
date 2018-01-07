@@ -71,10 +71,16 @@ void UDPListener::start()
 		_isActive = true;
 		_hyperion->getComponentRegister().componentStateChanged(COMP_UDPLISTENER, _isActive);
 
-		if(_bonjourService == nullptr)
+		if(_serviceRegister == nullptr)
 		{
-			_bonjourService = new BonjourServiceRegister();
-			_bonjourService->registerService("_hyperiond-udp._udp", _listenPort);
+			_serviceRegister = new BonjourServiceRegister(this);
+			_serviceRegister->registerService("_hyperiond-udp._udp", _listenPort);
+		}
+		else if( _serviceRegister->getPort() != _listenPort)
+		{
+			delete _serviceRegister;
+			_serviceRegister = new BonjourServiceRegister(this);
+			_serviceRegister->registerService("_hyperiond-udp._udp", _listenPort);
 		}
 	}
 }

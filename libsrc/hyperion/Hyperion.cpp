@@ -289,7 +289,7 @@ void Hyperion::handleSettingsUpdate(const settings::type& type, const QJsonDocum
 			_deviceSmooth->startTimerDelayed();
 		_lockUpdate = false;
 	}
-	// update once to push single color sets / adjustments/ ledlayout resizes and update ledBuffer
+	// update once to push single color sets / adjustments/ ledlayout resizes and update ledBuffer color
 	update();
 }
 

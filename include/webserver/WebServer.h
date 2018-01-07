@@ -12,6 +12,7 @@
 // settings
 #include <utils/settings.h>
 
+class BonjourServiceRegister;
 class StaticFileServing;
 class QtHttpServer;
 
@@ -50,6 +51,8 @@ private:
 
 	const QString        WEBSERVER_DEFAULT_PATH = ":/webconfig";
 	const quint16        WEBSERVER_DEFAULT_PORT = 8090;
+
+	BonjourServiceRegister * _serviceRegister = nullptr;
 };
 
 #endif // WEBSERVER_H

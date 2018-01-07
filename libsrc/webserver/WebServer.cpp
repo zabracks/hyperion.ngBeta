@@ -38,8 +38,17 @@ void WebServer::onServerStarted (quint16 port)
 {
 	Info(_log, "Started on port %d name '%s'", port ,_server->getServerName().toStdString().c_str());
 
-	BonjourServiceRegister *bonjourRegister_http = new BonjourServiceRegister();
-	bonjourRegister_http->registerService("_hyperiond-http._tcp", port);
+	if(_serviceRegister == nullptr)
+	{
+		_serviceRegister = new BonjourServiceRegister(this);
+		_serviceRegister->registerService("_hyperiond-http._tcp", port);
+	}
+	else if( _serviceRegister->getPort() != port)
+	{
+		delete _serviceRegister;
+		_serviceRegister = new BonjourServiceRegister(this);
+		_serviceRegister->registerService("_hyperiond-http._tcp", port);
+	}
 }
 
 void WebServer::onServerStopped () {

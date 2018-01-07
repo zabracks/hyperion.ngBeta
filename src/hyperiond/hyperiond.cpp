@@ -45,7 +45,7 @@
 
 HyperionDaemon* HyperionDaemon::daemon = nullptr;
 
-HyperionDaemon::HyperionDaemon(QString configFile, const QString rootPath, QObject *parent)
+HyperionDaemon::HyperionDaemon(QString configFile, const QString rootPath, QObject *parent, const bool& logLvlOverwrite)
 	: QObject(parent)
 	, _log(Logger::getInstance("DAEMON"))
 	, _authManager(new AuthManager(rootPath, this))
@@ -69,6 +69,9 @@ HyperionDaemon::HyperionDaemon(QString configFile, const QString rootPath, QObje
 {
 	HyperionDaemon::daemon = this;
 
+	// Image<ColorRgb>
+	qRegisterMetaType<Image<ColorRgb>>("Image<ColorRgb>");
+
 	// init settings
 	_settingsManager = new SettingsManager(0,configFile);
 
@@ -80,19 +83,9 @@ HyperionDaemon::HyperionDaemon(QString configFile, const QString rootPath, QObje
 	connect(this, &HyperionDaemon::settingsChanged, _netOrigin, &NetOrigin::handleSettingsUpdate);
 	_netOrigin->handleSettingsUpdate(settings::NETWORK, _settingsManager->getSetting(settings::NETWORK));
 
-	const QJsonObject& logConfig = _settingsManager->getSetting(settings::LOGGER).object();
-	if (Logger::getLogLevel() == Logger::WARNING)
-	{
-		std::string level = logConfig["level"].toString("warn").toStdString(); // silent warn verbose debug
-		if (level == "silent")       Logger::setLogLevel(Logger::OFF);
-		else if (level == "warn")    Logger::setLogLevel(Logger::WARNING);
-		else if (level == "verbose") Logger::setLogLevel(Logger::INFO);
-		else if (level == "debug")   Logger::setLogLevel(Logger::DEBUG);
-	}
-	else
-	{
-		Warning(Logger::getInstance("LOGGER"), "Logger settings overridden by command line argument");
-	}
+	// set inital log lvl if the loglvl wasn't overwritten by arg
+	if(!logLvlOverwrite)
+		handleSettingsUpdate(settings::LOGGER, _settingsManager->getSetting(settings::LOGGER));
 
 	_hyperion = Hyperion::initInstance(this, 0, configFile, rootPath);
 
@@ -214,6 +207,17 @@ void HyperionDaemon::startNetworkServices()
 
 void HyperionDaemon::handleSettingsUpdate(const settings::type& type, const QJsonDocument& config)
 {
+	if(type == settings::LOGGER)
+	{
+		const QJsonObject & logConfig = config.object();
+
+		std::string level = logConfig["level"].toString("warn").toStdString(); // silent warn verbose debug
+		if (level == "silent")       Logger::setLogLevel(Logger::OFF);
+		else if (level == "warn")    Logger::setLogLevel(Logger::WARNING);
+		else if (level == "verbose") Logger::setLogLevel(Logger::INFO);
+		else if (level == "debug")   Logger::setLogLevel(Logger::DEBUG);
+	}
+
 	if(type == settings::SYSTEMCAPTURE)
 	{
 		const QJsonObject & grabberConfig = config.object();
@@ -265,7 +269,6 @@ void HyperionDaemon::handleSettingsUpdate(const settings::type& type, const QJso
 		else if (type == "amlogic" && _amlGrabber == nullptr)      createGrabberAmlogic();
 		else if (type == "osx" && _osxGrabber == nullptr)          createGrabberOsx(grabberConfig);
 		else if (type == "x11" && _x11Grabber == nullptr)          createGrabberX11(grabberConfig);
-		else { Warning( _log, "unknown framegrabber type '%s'", QSTRING_CSTR(type)); }
 	}
 	else if(type == settings::V4L2)
 	{

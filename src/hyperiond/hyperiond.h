@@ -67,7 +67,7 @@ class HyperionDaemon : public QObject
 	friend SysTray;
 
 public:
-	HyperionDaemon(QString configFile, QString rootPath, QObject *parent=nullptr);
+	HyperionDaemon(QString configFile, QString rootPath, QObject *parent, const bool& logLvlOverwrite );
 	~HyperionDaemon();
 
 	quint16 getWebServerPort();
