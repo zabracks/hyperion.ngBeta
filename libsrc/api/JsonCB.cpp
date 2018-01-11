@@ -28,7 +28,7 @@ JsonCB::JsonCB(QObject* parent)
 	, _prioMuxer(_hyperion->getMuxerInstance())
 {
 	_availableCommands << "components-update" << "plugins-update" << "sessions-update" << "priorities-update" << "imageToLedMapping-update"
-	<< "adjustment-update" << "videomode-update" << "effects-update";
+	<< "adjustment-update" << "videomode-update" << "effects-update" << "settings-update";
 }
 
 bool JsonCB::subscribeFor(const QString& type)
@@ -83,6 +83,12 @@ bool JsonCB::subscribeFor(const QString& type)
 	{
 		_subscribedCommands << type;
 		connect(_hyperion, &Hyperion::effectListUpdated, this, &JsonCB::handleEffectListChange, Qt::UniqueConnection);
+	}
+
+	if(type == "settings-update")
+	{
+		_subscribedCommands << type;
+		connect(_hyperion, &Hyperion::settingsChanged, this, &JsonCB::handleSettingsChange, Qt::UniqueConnection);
 	}
 
 	return true;
@@ -330,4 +336,15 @@ void JsonCB::handleEffectListChange()
 	};
 	effects["effects"] = effectList;
 	doCallback("effects-update", QVariant(effects));
+}
+
+void JsonCB::handleSettingsChange(const settings::type& type, const QJsonDocument& data)
+{
+	QJsonObject dat;
+	if(data.isObject())
+		dat[typeToString(type)] = data.object();
+	else
+		dat[typeToString(type)] = data.array();
+
+	doCallback("settings-update", QVariant(dat));
 }

@@ -5,23 +5,23 @@ $(document).ready(function() {
 	var dialog;
 	var leds;
 	var lC = false;
-	
+
 	$(hyperion).one("ready",function(){
 		leds = serverConfig.leds;
-		
+
 		if(showOptHelp)
 		{
 			createHint('intro', $.i18n('main_ledsim_text'), 'ledsim_text');
 			$('#ledsim_text').css({'margin':'10px 15px 0px 15px'});
 			$('#ledsim_text .bs-callout').css("margin","0px")
 		}
-		
+
 		if(getStorage('ledsim_width') != null)
 		{
 			ledsim_width = getStorage('ledsim_width');
 			ledsim_height = getStorage('ledsim_height');
 		}
-		
+
 		dialog = $("#ledsim_dialog").dialog({
 			uiLibrary: 'bootstrap',
 			resizable: true,
@@ -44,7 +44,7 @@ $(document).ready(function() {
 				}
 				modalOpened = true;
 				requestLedColorsStart();
-			
+
 				if($('#leds_toggle_live_video').hasClass('btn-success'))
 					requestLedImageStart();
 			},
@@ -53,17 +53,17 @@ $(document).ready(function() {
 			},
 			resizeStop: function (e) {
 				setStorage("ledsim_width", $("#ledsim_dialog").outerWidth());
-				setStorage("ledsim_height", $("#ledsim_dialog").outerHeight());	
+				setStorage("ledsim_height", $("#ledsim_dialog").outerHeight());
 			}
 		});
 	});
-	
+
 	function updateLedLayout()
 	{
 		//calculate body size
 		var canvas_height = $('#ledsim_dialog').outerHeight()-$('#ledsim_text').outerHeight()-$('[data-role=footer]').outerHeight()-$('[data-role=header]').outerHeight()-40;
 		var canvas_width = $('#ledsim_dialog').outerWidth()-30;
-		
+
 		$('#leds_canvas').html("");
 		leds_html = '<img src="" id="image_preview" style="position:relative" />';
 		for(var idx=0; idx<leds.length; idx++)
@@ -78,14 +78,14 @@ $(document).ready(function() {
 			leds_html += '<div id="'+led_id+'" class="led" style="'+bgcolor+pos+'" title="'+led.index+'"><span id="'+led_id+'_num" class="led_num">'+led.index+'</span></div>';
 		}
 		$('#leds_canvas').html(leds_html);
-		
+
 		if($('#leds_toggle_num').hasClass('btn-success'))
 			$('.led_num').toggle(true);
-		
+
 		if($('#leds_toggle').hasClass('btn-danger'))
 			$('.led').toggle(false);
-	
-		$('#image_preview').attr("width" , canvas_width-1);		
+
+		$('#image_preview').attr("width" , canvas_width-1);
 		$('#image_preview').attr("height", canvas_height-1);
 	}
 	// ------------------------------------------------------------------
@@ -113,7 +113,7 @@ $(document).ready(function() {
 			requestLedImageStart();
 		}
 	});
-	
+
 	// ------------------------------------------------------------------
 	$(hyperion).on("cmd-ledcolors-ledstream-update",function(event){
 		if (!modalOpened)
@@ -130,7 +130,7 @@ $(document).ready(function() {
 			}
 		}
 	});
-	
+
 	// ------------------------------------------------------------------
 	$(hyperion).on("cmd-ledcolors-imagestream-update",function(event){
 		if (!modalOpened)
@@ -143,8 +143,18 @@ $(document).ready(function() {
 			$("#image_preview").attr("src", imageData);
 		}
 	});
-	
+
 	$("#btn_open_ledsim").off().on("click", function(event) {
 		dialog.open();
+	});
+
+	// ------------------------------------------------------------------
+	$(hyperion).on("cmd-settings-update",function(event){
+		var obj = event.response.data
+		Object.getOwnPropertyNames(obj).forEach(function(val, idx, array) {
+			serverInfo[val] = obj[val];
+	  	});
+		leds = serverConfig.leds
+		updateLedLayout();
 	});
 });

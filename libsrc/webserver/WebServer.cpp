@@ -4,7 +4,9 @@
 
 // bonjour
 #include <bonjour/bonjourserviceregister.h>
-#include <bonjour/bonjourrecord.h>
+
+// netUtil
+#include <utils/NetUtils.h>
 
 #include <QFileInfo>
 
@@ -49,10 +51,12 @@ void WebServer::onServerStarted (quint16 port)
 		_serviceRegister = new BonjourServiceRegister(this);
 		_serviceRegister->registerService("_hyperiond-http._tcp", port);
 	}
+	emit stateChange(true);
 }
 
 void WebServer::onServerStopped () {
 	Info(_log, "Stopped %s", _server->getServerName().toStdString().c_str());
+	emit stateChange(false);
 }
 
 void WebServer::onServerError (QString msg)
@@ -66,7 +70,6 @@ void WebServer::handleSettingsUpdate(const settings::type& type, const QJsonDocu
 	{
 		const QJsonObject& obj = config.object();
 
-		bool webconfigEnable = obj["enable"].toBool(true);
 		_baseUrl = obj["document_root"].toString(WEBSERVER_DEFAULT_PATH);
 
 
@@ -90,10 +93,11 @@ void WebServer::handleSettingsUpdate(const settings::type& type, const QJsonDocu
 			_port = obj["port"].toInt(WEBSERVER_DEFAULT_PORT);
 			stop();
 		}
-		if ( webconfigEnable )
-		{
-			start();
-		}
+
+		// eval if the port is available, will be incremented if not
+		NetUtils::portAvailable(_port, _log);
+
+		start();
 	}
 }
 
@@ -105,4 +109,14 @@ void WebServer::start()
 void WebServer::stop()
 {
 	_server->stop();
+}
+
+const bool WebServer::isListening()
+{
+	return _server->isListening();
+}
+
+void WebServer::setSSDPDescription(const QString & desc)
+{
+	_staticFileServing->setSSDPDescription(desc);
 }

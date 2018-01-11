@@ -27,7 +27,20 @@ public:
 	void start();
 	void stop();
 
+	const bool isListening();
 	quint16 getPort() { return _port; };
+
+	///
+	/// @brief Set a new description, if empty the description is NotFound for clients
+	///
+	void setSSDPDescription(const QString & desc);
+
+signals:
+	///
+	/// @emits whenever server is started or stopped (to sync with SSDPHandler)
+	/// @param newState   True when started, false when stopped
+	///
+	void stateChange(const bool newState);
 
 public slots:
 	void onServerStopped      (void);

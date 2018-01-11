@@ -157,7 +157,7 @@ public:
 
 	///
 	/// @brief      Test if id exists
-	/// @param[in]  token       The id
+	/// @param[in]  id      The id
 	/// @return     true on success else false
 	///
 	inline const bool idExist(const QString& id)

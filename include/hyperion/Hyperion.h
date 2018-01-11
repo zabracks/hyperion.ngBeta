@@ -245,11 +245,6 @@ public:
 	/// get the root path for all hyperion user data files
 	const QString &getRootPath() { return _rootPath; };
 
-	/// get unique id per instance
-	const QString &getId(){ return _id; };
-	/// set unique id
-	void setId(QString id){ _id = id; };
-
 	int getLatchTime() const;
 
 	/// forward smoothing config
@@ -509,9 +504,6 @@ private:
 
 	/// root path for all hyperion user data files
 	QString _rootPath;
-
-	/// unique id per instance
-	QString _id;
 
 	/// Logger instance
 	Logger * _log;

@@ -26,6 +26,7 @@
 #include <hyperion/GrabberWrapper.h>
 #include <utils/Process.h>
 #include <utils/JsonUtils.h>
+#include <utils/Stats.h>
 
 // bonjour wrapper
 #include <bonjour/bonjourbrowserwrapper.h>
@@ -377,7 +378,7 @@ void JsonAPI::handleSysInfoCommand(const QJsonObject&, const QString& command, c
 	hyperion["version"         ] = QString(HYPERION_VERSION);
 	hyperion["build"           ] = QString(HYPERION_BUILD_ID);
 	hyperion["time"            ] = QString(__DATE__ " " __TIME__);
-	hyperion["id"              ] = _hyperion->getId();
+	hyperion["id"              ] = Stats::getInstance()->getID();
 	info["hyperion"] = hyperion;
 
 	// send the result
@@ -636,13 +637,17 @@ void JsonAPI::handleServerInfoCommand(const QJsonObject& message, const QString&
 		if(subsArr.contains("all"))
 		{
 			subsArr = QJsonArray();
-			for(const auto entry : _jsonCB->getCommands())
+			for(const auto & entry : _jsonCB->getCommands())
 			{
 				subsArr.append(entry);
 			}
 		}
-		for(const auto entry : subsArr)
+		for(const auto & entry : subsArr)
 		{
+			// config callbacks just if auth is set
+			if(entry == "settings-update" && !_authorized)
+				continue;
+
 			if(!_jsonCB->subscribeFor(entry.toString()))
 				sendErrorReply(QString("Subscription for '%1' not found. Possible values: %2").arg(entry.toString(), _jsonCB->getCommands().join(", ")), command, tan);
 		}

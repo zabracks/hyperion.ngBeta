@@ -12,6 +12,8 @@
 #include <bonjour/bonjourrecord.h>
 // videModes
 #include <utils/VideoMode.h>
+// settings
+#include <utils/settings.h>
 
 class Hyperion;
 class ComponentRegister;
@@ -96,6 +98,13 @@ private slots:
 	/// @brief Handle effect list change
 	///
 	void handleEffectListChange();
+
+	///
+	/// @brief Handle a config part change. This does NOT include (global) changes from other hyperion instances
+	/// @param type   The settings type from enum
+	/// @param data   The data as QJsonDocument
+	///
+	void handleSettingsChange(const settings::type& type, const QJsonDocument& data);
 
 private:
 	/// pointer of Hyperion instance

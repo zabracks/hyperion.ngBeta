@@ -31,6 +31,9 @@
 // bonjour browser
 #include <bonjour/bonjourbrowserwrapper.h>
 
+// ssdp
+#include <ssdp/SSDPHandler.h>
+
 // settings
 #include <hyperion/SettingsManager.h>
 
@@ -65,6 +68,7 @@ HyperionDaemon::HyperionDaemon(QString configFile, const QString rootPath, QObje
 	, _osxGrabber(nullptr)
 	, _hyperion(nullptr)
 	, _stats(nullptr)
+	, _ssdp(nullptr)
 	, _currVideoMode(VIDEO_2D)
 {
 	HyperionDaemon::daemon = this;
@@ -75,6 +79,10 @@ HyperionDaemon::HyperionDaemon(QString configFile, const QString rootPath, QObje
 	// init settings
 	_settingsManager = new SettingsManager(0,configFile);
 
+	// set inital log lvl if the loglvl wasn't overwritten by arg
+	if(!logLvlOverwrite)
+		handleSettingsUpdate(settings::LOGGER, _settingsManager->getSetting(settings::LOGGER));
+
 	// connect and apply settings for AuthManager
 	connect(this, &HyperionDaemon::settingsChanged, _authManager, &AuthManager::handleSettingsUpdate);
 	_authManager->handleSettingsUpdate(settings::NETWORK, _settingsManager->getSetting(settings::NETWORK));
@@ -83,9 +91,8 @@ HyperionDaemon::HyperionDaemon(QString configFile, const QString rootPath, QObje
 	connect(this, &HyperionDaemon::settingsChanged, _netOrigin, &NetOrigin::handleSettingsUpdate);
 	_netOrigin->handleSettingsUpdate(settings::NETWORK, _settingsManager->getSetting(settings::NETWORK));
 
-	// set inital log lvl if the loglvl wasn't overwritten by arg
-	if(!logLvlOverwrite)
-		handleSettingsUpdate(settings::LOGGER, _settingsManager->getSetting(settings::LOGGER));
+	// Create Stats
+	_stats = new Stats(_settingsManager->getSettings());
 
 	_hyperion = Hyperion::initInstance(this, 0, configFile, rootPath);
 
@@ -180,9 +187,6 @@ void HyperionDaemon::freeObjects()
 
 void HyperionDaemon::startNetworkServices()
 {
-	// Create Stats before network services
-	_stats = new Stats();
-
 	// Create Json server
 	_jsonServer = new JsonServer(getSetting(settings::JSONSERVER));
 	connect(this, &HyperionDaemon::settingsChanged, _jsonServer, &JsonServer::handleSettingsUpdate);
@@ -203,6 +207,10 @@ void HyperionDaemon::startNetworkServices()
 	// Create Webserver
 	_webserver = new WebServer(getSetting(settings::WEBSERVER));
 	connect(this, &HyperionDaemon::settingsChanged, _webserver, &WebServer::handleSettingsUpdate);
+
+	// create SSDPHandler (after webserver), connect webserver state switches
+	_ssdp = new SSDPHandler(this, _webserver);
+	connect(_webserver, &WebServer::stateChange, _ssdp, &SSDPHandler::handleWebServerStateChange);
 }
 
 void HyperionDaemon::handleSettingsUpdate(const settings::type& type, const QJsonDocument& config)

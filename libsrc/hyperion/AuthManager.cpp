@@ -41,8 +41,8 @@ const bool & AuthManager::isAuthRequired()
 
 const AuthManager::AuthDefinition AuthManager::createToken(const QString& comment)
 {
-	const QString token = QUuid::createUuid().toString().remove("{").remove("}");
-	const QString id = QUuid::createUuid().toString().remove("{").remove("}").left(5);
+	const QString token = QUuid::createUuid().toString().mid(1, 36);
+	const QString id = QUuid::createUuid().toString().mid(1, 36).left(5);
 
 	_authTable->createToken(token, comment, id);
 

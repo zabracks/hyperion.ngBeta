@@ -59,7 +59,7 @@ void NetOrigin::handleSettingsUpdate(const settings::type& type, const QJsonDocu
 			QHostAddress host(entry);
 			if(host.isNull())
 			{
-				Error(_log,"The whitelisted IP address '%s' isn't valid! Skipped",QSTRING_CSTR(entry));
+				Warning(_log,"The whitelisted IP address '%s' isn't valid! Skipped",QSTRING_CSTR(entry));
 				continue;
 			}
 			_ipWhitelist << host;

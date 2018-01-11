@@ -269,12 +269,10 @@
 	},
 
 	/// Configuration of the Hyperion webserver
-	///  * enable        : enable or disable the webserver (true/false)
 	///  * document_root : path to hyperion webapp files (webconfig developer only)
 	///  * port          : the port where hyperion webapp is accasible
 	"webConfig" :
 	{
-		"enable"        : true,
 		"document_root" : "/path/to/files",
 		"port"          : 8090
 	},

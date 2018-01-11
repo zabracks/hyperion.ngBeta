@@ -20,6 +20,7 @@ target_link_libraries(hyperiond
 		protoserver
 		webserver
 		bonjour
+		ssdp
 		database
 		python
 		${PYTHON_LIBRARIES}

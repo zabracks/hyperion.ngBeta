@@ -59,6 +59,7 @@ class SettingsManager;
 class AuthManager;
 class NetOrigin;
 class PythonInit;
+class SSDPHandler;
 
 class HyperionDaemon : public QObject
 {
@@ -149,6 +150,7 @@ private:
 	OsxWrapper*            _osxGrabber;
 	Hyperion*              _hyperion;
 	Stats*                 _stats;
+	SSDPHandler*           _ssdp;
 
 	unsigned            _grabber_width;
 	unsigned            _grabber_height;
