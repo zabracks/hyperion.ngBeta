@@ -2,6 +2,7 @@
 #include <csignal>
 #include <unistd.h>
 #include <stdlib.h>
+#include <stdio.h>
 
 #ifndef __APPLE__
 /* prctl is Linux only */
@@ -19,6 +20,7 @@
 #include <QDir>
 #include <QStringList>
 #include <QSystemTrayIcon>
+#include <QSharedMemory>
 
 #include "HyperionConfig.h"
 
@@ -130,6 +132,14 @@ int main(int argc, char** argv)
 	signal(SIGABRT, signal_handler);
 	signal(SIGCHLD, signal_handler);
 	signal(SIGPIPE, signal_handler);
+
+	// one instance check
+	QSharedMemory sharedMemory("8c1ea6a4da5043c6ab26af8be20b845d3fmx8hg", app.data() );
+	if (!sharedMemory.create(1))
+	{
+		printf ("Hyperion Daemon (hyperiond) is already running, you can't start multiple sessions.\n");
+ 		exit (1);
+	}
 
 	// force the locale
 	setlocale(LC_ALL, "C");

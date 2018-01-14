@@ -10,6 +10,7 @@
 #include <plugin/PluginDefinition.h>
 #include <utils/ColorRgb.h>
 #include <utils/Components.h>
+#include <hyperion/PriorityMuxer.h>
 
 // qt incl
 #include <QThread>
@@ -17,7 +18,6 @@
 
 class Hyperion;
 class Plugins;
-class PriorityMuxer;
 
 class Plugin : public QThread
 {
@@ -86,23 +86,30 @@ public:
 	///
 	/// @brief Print a log message from plugin
 	/// @param msg  The message to print
-	/// @param lvl  The log lvl: 0=Info, 1=Warning, 2=Error, 3=Debug -> unhandled int value is Debug
+	/// @param lvl  The log lvl. See loglvlEnum in Plugin module, unhandled value is Debug
 	///
 	void printToLog(char* msg, int lvl = -1);
-
-	///
-	/// @brief Set a component state of a specific component
-	/// @param comp   The component 0=ALL, 1=SMOOTH, 2=BLACKB, 3=LEDDEVICE, 4=SYSCAPT, 5=V4L
-	/// @param enable If true it enables the comp, else false
-	/// @return True if component was found else false
-	///
-	const int setComponentState(const int& comp, const int& enable);
 
 	///
 	/// @brief Get the current settings object for this plugin instance
 	/// @return The settings
 	///
 	const QJsonValue getSettings();
+
+	///
+	/// @brief Set a component state of a specific component
+	/// @param comp   The comp to check
+	/// @return -1 when comp is not found, True(1) on comp enabled else False
+	///
+	const int getComponentState(int comp);
+
+	///
+	/// @brief Set a component state of a specific component
+	/// @param comp   See available comps at Module v
+	/// @param enable If true it enables the comp, else false
+	/// @return True if component was found else false
+	///
+	const int setComponentState(int comp, const int& enable);
 
 	///
 	/// @brief Set a single color with a specific timeout
@@ -119,6 +126,31 @@ public:
 	/// @param  duration  duration in ms
 	///
 	int setEffect(const char* name, const int& priority, const int& duration);
+
+	///
+	/// @brief Get priority info for given priority
+	/// @return         The priority
+	///
+	PriorityMuxer::InputInfo getPriorityInfo(const int& priority) const;
+
+	///
+	/// @brief Get all priorities in PriorityMuxer
+	/// @return prios 
+	///
+	QList<int> getAllPriorities() const;
+
+	///
+	/// @brief Get the current visible priority
+	/// @return         The priority
+	///
+	int getVisiblePriority() const;
+
+	///
+	/// @brief Set the given priority to visible
+	/// @param priority The priority to set
+	/// @return         True on success, false if not found
+	///
+	int setVisiblePriority(const int& priority);
 
 public slots:
 	///

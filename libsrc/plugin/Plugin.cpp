@@ -56,11 +56,18 @@ void Plugin::run()
 
 	// for callback and components enums add an integer constant to module as name
 	// hint: the integer constants for the components enum is added with the number of elements in callback, to not conflict with the callback enums
+	// USED INTEGERS
+	// 0-2 Callbacks
+	// 90-93 loglvl
+	// 100-  Components
 	for (PyEnumDef* callback = PluginModule::callbackEnums; callback->name != NULL; callback++)
 		PyModule_AddIntConstant(module, callback->name, callback->value);
 
+	for (PyEnumDef* components = PluginModule::loglvlEnums; components->name != NULL; components++)
+		PyModule_AddIntConstant(module, components->name, components->value);
+
 	for (PyEnumDef* components = PluginModule::componentsEnums; components->name != NULL; components++)
-		PyModule_AddIntConstant(module, components->name, components->value + 3);
+		PyModule_AddIntConstant(module, components->name, components->value + 100);
 
 	// decref the module
 	Py_XDECREF(module);
@@ -282,13 +289,13 @@ void Plugin::printToLog(char* msg, int lvl)
 {
 	switch(lvl)
 	{
-		case 0:
+		case 90:
 			Info(_log,"%s: %s", QSTRING_CSTR(_def.name), msg);
 			break;
-		case 1:
+		case 91:
 			Warning(_log,"%s: %s", QSTRING_CSTR(_def.name), msg);
 			break;
-		case 2:
+		case 92:
 			Error(_log,"%s: %s", QSTRING_CSTR(_def.name), msg);
 			break;
 		default:
@@ -296,46 +303,46 @@ void Plugin::printToLog(char* msg, int lvl)
 	}
 }
 
-const int Plugin::setComponentState(const int& comp, const int& enable)
+const QJsonValue Plugin::getSettings()
 {
-	hyperion::Components comps;
+	return _plugins->getSettingsOfPlugin(_id);
+}
+
+const int Plugin::getComponentState(int comp)
+{
+	comp -= 100;
+	return _hyperion->getComponentState(static_cast<hyperion::Components>(comp));
+}
+
+const int Plugin::setComponentState(int comp, const int& enable)
+{
+	comp -= 100;
 	switch(comp)
 	{
-		case 0:
+		case hyperion::COMP_ALL:
 			_hyperion->getComponentRegister().setHyperionEnable(bool(enable));
-			comps = hyperion::COMP_ALL;
 			break;
-		case 1:
+		case hyperion::COMP_SMOOTHING:
 			_hyperion->setComponentState(hyperion::COMP_SMOOTHING, bool(enable));
-			comps = hyperion::COMP_SMOOTHING;
 			break;
-		case 2:
+		case hyperion::COMP_BLACKBORDER:
 			_hyperion->setComponentState(hyperion::COMP_BLACKBORDER, bool(enable));
-			comps = hyperion::COMP_BLACKBORDER;
 			break;
-		case 3:
+		case hyperion::COMP_LEDDEVICE:
 			_hyperion->setComponentState(hyperion::COMP_LEDDEVICE, bool(enable));
-			comps = hyperion::COMP_LEDDEVICE;
 			break;
-		case 4:
+		case hyperion::COMP_GRABBER:
 			_hyperion->setComponentState(hyperion::COMP_GRABBER, bool(enable));
-			comps = hyperion::COMP_GRABBER;
 			break;
-		case 5:
+		case hyperion::COMP_V4L:
 			_hyperion->setComponentState(hyperion::COMP_V4L, bool(enable));
-			comps = hyperion::COMP_V4L;
 			break;
 		default:
 			Warning(_log, "%s: %s", QSTRING_CSTR(_def.name), "Requested an unknown component state change!");
 			return 0;
 	}
-	Debug(_log, "%s: Set component '%s' state to %s", QSTRING_CSTR(_def.name), componentToString(comps), (enable ? "enabled" : "disabled"));
+	Debug(_log, "%s: Set component '%s' state to %s", QSTRING_CSTR(_def.name), hyperion::componentToString(static_cast<hyperion::Components>(comp)), (enable ? "enabled" : "disabled"));
 	return 1;
-}
-
-const QJsonValue Plugin::getSettings()
-{
-	return _plugins->getSettingsOfPlugin(_id);
 }
 
 void Plugin::setColor(const ColorRgb& color, const int& priority, const int& duration)
@@ -346,6 +353,26 @@ void Plugin::setColor(const ColorRgb& color, const int& priority, const int& dur
 int Plugin::setEffect(const char* name, const int& priority, const int& duration)
 {
 	return _hyperion->setEffect(name, priority, duration, "Plugin: "+_def.name);
+}
+
+PriorityMuxer::InputInfo Plugin::getPriorityInfo(const int& priority) const
+{
+	return _hyperion->getPriorityInfo(priority);
+}
+
+QList<int> Plugin::getAllPriorities() const
+{
+	return _hyperion->getActivePriorities();
+}
+
+int Plugin::getVisiblePriority() const
+{
+	return _hyperion->getCurrentPriority();
+}
+
+int Plugin::setVisiblePriority(const int& priority)
+{
+	return _hyperion->setCurrentSourcePriority(priority);
 }
 
 void Plugin::handlePluginAction(PluginAction action, QString id, bool success, PluginDefinition def)
@@ -396,7 +423,7 @@ void Plugin::onCompStateChanged(const hyperion::Components comp, bool state)
 					if (PyLong_Check(PyList_GetItem(it.value(), i))) // borrowed references
 					{
 						// the compared enum comp is added with 100 because the registered integer value has been added to not conflict with the callback enums
-						if (PyLong_AsLong(PyList_GetItem(it.value(), i)) == (comp + 3))
+						if (PyLong_AsLong(PyList_GetItem(it.value(), i)) == (comp + 100))
 						{
 							// Call the callback function and return the result of the call on success, or NULL on failure.
 							data = PyObject_CallFunctionObjArgs(PyList_GetItem(it.value(), 0), PyUnicode_FromString(componentToIdString(comp)), PyBool_FromLong(state), NULL);

@@ -38,11 +38,12 @@ void SSDPHandler::handleWebServerStateChange(const bool newState)
 	{
 		// refresh info
 		_webserver->setSSDPDescription(buildDesc());
+		setDescriptionAddress(getDescAddress());
 		if(start())
 		{
-			sendAlive("upnp:rootdevice", getDescAddress());
-			sendAlive("urn:schemas-upnp-org:device:Basic:1", getDescAddress());
-			sendAlive("urn:hyperion-project.org:device:basic:1", getDescAddress());
+			sendAlive("upnp:rootdevice");
+			sendAlive("urn:schemas-upnp-org:device:basic:1");
+			sendAlive("urn:hyperion-project.org:device:basic:1");
 		}
 	}
 	else
@@ -57,12 +58,22 @@ void SSDPHandler::handleNetworkConfigurationChanged(const QNetworkConfiguration 
 	// get localAddress from interface
 	if(!getLocalAddress().isEmpty())
 	{
-		_localAddress = getLocalAddress();
-		// update desc & notify probably new ip
-		_webserver->setSSDPDescription(buildDesc());
-		sendUpdate("upnp:rootdevice", getDescAddress());
-		sendUpdate("urn:schemas-upnp-org:device:Basic:1", getDescAddress());
-		sendUpdate("urn:hyperion-project.org:device:basic:1", getDescAddress());
+		QString localAddress = getLocalAddress();
+		if(_localAddress != localAddress)
+		{
+			// revoke old ip
+			sendByeBye("upnp:rootdevice");
+			sendByeBye("urn:schemas-upnp-org:device:basic:1");
+			sendByeBye("urn:hyperion-project.org:device:basic:1");
+
+			// update desc & notify new ip
+			_localAddress = localAddress;
+			_webserver->setSSDPDescription(buildDesc());
+			setDescriptionAddress(getDescAddress());
+			sendAlive("upnp:rootdevice");
+			sendAlive("urn:schemas-upnp-org:device:basic:1");
+			sendAlive("urn:hyperion-project.org:device:basic:1");
+		}
 	}
 }
 
@@ -86,7 +97,7 @@ void SSDPHandler::handleMSearchRequest(const QString& target, const QString& mx,
 
 	// when searched for all devices / root devices / basic device
 	if(target == "ssdp:all" || target == "upnp:rootdevice" || target == "urn:schemas-upnp-org:device:basic:1" || target == "urn:hyperion-project.org:device:basic:1")
-		sendMSearchResponse(target, getDescAddress(), address, port);
+		sendMSearchResponse(target, address, port);
 }
 
 const QString SSDPHandler::getDescAddress()

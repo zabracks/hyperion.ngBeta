@@ -5,9 +5,11 @@
 #include <hyperion/Hyperion.h>
 #include <utils/Logger.h>
 #include <utils/ColorRgb.h>
+#include <hyperion/PriorityMuxer.h>
 
 // qt
 #include <QJsonArray>
+#include <QDateTime>
 
 // Get the plugin from the capsule
 #define getPlugin() static_cast<Plugin*>((Plugin*)PyCapsule_Import("plugin.__pluginObj", 0))
@@ -19,21 +21,29 @@ PyEnumDef PluginModule::callbackEnums[]  = {
 	{ nullptr, 0}
 };
 
+PyEnumDef PluginModule::loglvlEnums[]  = {
+	{ (char*) "LOG_INFO",		90	},
+	{ (char*) "LOG_WARNING",	91	},
+	{ (char*) "LOG_ERROR",		92	},
+	{ (char*) "LOG_DEBUG",		93	},
+	{ nullptr, 0}
+};
+
 PyEnumDef PluginModule::componentsEnums[] = {
 	{ (char*) "COMP_ALL",				hyperion::Components::COMP_ALL			},
 	{ (char*) "COMP_SMOOTHING",			hyperion::Components::COMP_SMOOTHING		},
-	{ (char*) "COMP_BLACKBORDER",			hyperion::Components::COMP_BLACKBORDER		},
-	{ (char*) "COMP_FORWARDER",			hyperion::Components::COMP_FORWARDER		},
-	{ (char*) "COMP_UDPLISTENER",			hyperion::Components::COMP_UDPLISTENER		},
-	{ (char*) "COMP_BOBLIGHTSERVER",		hyperion::Components::COMP_BOBLIGHTSERVER	},
+	{ (char*) "COMP_BLACKBORDER",		hyperion::Components::COMP_BLACKBORDER		},
+	{ (char*) "COMP_LEDDEVICE",			hyperion::Components::COMP_LEDDEVICE		},
 	{ (char*) "COMP_GRABBER",			hyperion::Components::COMP_GRABBER		},
 	{ (char*) "COMP_V4L",				hyperion::Components::COMP_V4L			},
+/*	{ (char*) "COMP_FORWARDER",			hyperion::Components::COMP_FORWARDER		},
+	{ (char*) "COMP_UDPLISTENER",			hyperion::Components::COMP_UDPLISTENER		},
+	{ (char*) "COMP_BOBLIGHTSERVER",		hyperion::Components::COMP_BOBLIGHTSERVER	},
 	{ (char*) "COMP_COLOR",				hyperion::Components::COMP_COLOR		},
 	{ (char*) "COMP_IMAGE",				hyperion::Components::COMP_IMAGE		},
 	{ (char*) "COMP_EFFECT",			hyperion::Components::COMP_EFFECT		},
 	{ (char*) "COMP_PROTOSERVER",			hyperion::Components::COMP_PROTOSERVER		},
-	{ (char*) "COMP_LEDDEVICE",			hyperion::Components::COMP_LEDDEVICE		},
-	{ nullptr, 0}
+*/	{ nullptr, 0}
 };
 
 struct PyModuleDef PluginModule::moduleDef = {
@@ -53,9 +63,14 @@ PyMethodDef PluginModule::pluginMethods[] = {
 	{"log",			PluginModule::wrapLog,			METH_VARARGS,	"Write a message to the log"},
 	{"abort",		PluginModule::wrapAbort,		METH_NOARGS,	"Check if the plugin should abort execution."},
 	{"getSettings",		PluginModule::wrapGetSettings,		METH_NOARGS,	"Get the settings object"},
+	{"getComponentState",	PluginModule::wrapGetComponentState,	METH_VARARGS,	"Get the component state of a specific component"},
 	{"setComponentState",	PluginModule::wrapSetComponentState,	METH_VARARGS,	"Set a component to a state, returns false if comp is not found."},
 	{"setColor",		PluginModule::wrapSetColor,		METH_VARARGS,	"Set a single color"},
 	{"setEffect",		PluginModule::wrapSetEffect,		METH_VARARGS,	"Set a effect by name. Timeout and priority are optional"},
+	{"getPriorityInfo",		PluginModule::wrapGetPriorityInfo,		METH_VARARGS,	"Get the priority info for given priority"},
+	{"getAllPriorities",		PluginModule::wrapGetAllPriorities,		METH_NOARGS,	"Get all registered priorities from Priority Muxer"},
+	{"getVisiblePriority",		PluginModule::wrapGetVisiblePriority,		METH_NOARGS,	"Get the current visible priority"},
+	{"setVisiblePriority",		PluginModule::wrapSetVisiblePriority,		METH_VARARGS,	"Select a specific priority"},
 
 	// callback methods
 	{"registerCallback",	PluginModule::registerCallback,		METH_VARARGS,	"Register a callback function."},
@@ -132,9 +147,6 @@ PyObject* PluginModule::wrapAbort(PyObject *, PyObject *)
 
 PyObject* PluginModule::wrapLog(PyObject *, PyObject *args)
 {
-	// check if we have aborted already
-	if (getPlugin()->isInterruptionRequested()) Py_RETURN_NONE;
-
 	char *msg;
 	int lvl;
 
@@ -172,6 +184,22 @@ PyObject* PluginModule::wrapGetSettings(PyObject *, PyObject *)
 		return Py_BuildValue("O", PluginModule::json2python(getPlugin()->getSettings()));
 }
 
+PyObject* PluginModule::wrapGetComponentState(PyObject *, PyObject *args)
+{
+	// check if we have aborted already
+	if (getPlugin()->isInterruptionRequested()) Py_RETURN_NONE;
+
+	int comp;
+
+	// log with lvl
+	if (!PyArg_ParseTuple(args, "i", &comp))
+	{
+		PyErr_SetString(PyExc_TypeError, "int argument required to getComponentState()");
+		return nullptr;
+	}
+	return Py_BuildValue("i",getPlugin()->getComponentState(comp));
+}
+
 PyObject* PluginModule::wrapSetComponentState(PyObject *, PyObject *args)
 {
 	// check if we have aborted already
@@ -179,11 +207,10 @@ PyObject* PluginModule::wrapSetComponentState(PyObject *, PyObject *args)
 
 	int comp, enable;
 
-	// log with lvl
 	if (!PyArg_ParseTuple(args, "ii", &comp, &enable))
 	{
-		PyErr_SetString(PyExc_TypeError, "To set a component state, you need two int args");
-		return nullptr;;
+		PyErr_SetString(PyExc_TypeError, "To setComponentState(), you need two int args");
+		return nullptr;
 	}
 	return Py_BuildValue("i",getPlugin()->setComponentState(comp, enable));
 }
@@ -214,7 +241,7 @@ PyObject* PluginModule::wrapSetColor(PyObject *, PyObject *args)
 		Py_RETURN_NONE;
 	}
 	PyErr_SetString(PyExc_RuntimeError, "Invalid arguments for setColor()");
-	return nullptr;;
+	return nullptr;
 }
 
 PyObject* PluginModule::wrapSetEffect(PyObject *, PyObject *args)
@@ -240,6 +267,62 @@ PyObject* PluginModule::wrapSetEffect(PyObject *, PyObject *args)
 		return Py_BuildValue("i", getPlugin()->setEffect(name, priority, duration));
 	}
 	PyErr_SetString(PyExc_RuntimeError, "Invalid arguments for setEffect()");
+	return nullptr;
+}
+
+PyObject* PluginModule::wrapGetPriorityInfo(PyObject *, PyObject *args)
+{
+	// check if we have aborted already
+	if (getPlugin()->isInterruptionRequested()) Py_RETURN_NONE;
+
+	int priority;
+
+	int argCount = PyTuple_Size(args);
+	if(argCount == 1 && PyArg_ParseTuple(args, "i", &priority))
+	{
+		const PriorityMuxer::InputInfo info = getPlugin()->getPriorityInfo(priority);
+		int timeout = (info.timeoutTime_ms > 0) ? (QDateTime::currentMSecsSinceEpoch() - info.timeoutTime_ms) : info.timeoutTime_ms;
+		return Py_BuildValue("{s:i,s:i,s:s,s:s,s:s}"
+			, "priority", info.priority
+			, "timeout", timeout
+			, "component" , QSTRING_CSTR(info.origin)
+			, "origin" , componentToIdString(info.componentId)
+		 	, "owner" , QSTRING_CSTR(info.owner) );
+	}
+	PyErr_SetString(PyExc_RuntimeError, "Invalid argument for getPriorityInfo()");
+	return nullptr;
+}
+
+PyObject* PluginModule::wrapGetAllPriorities(PyObject *, PyObject *args)
+{
+	const QList<int> prioList = getPlugin()->getAllPriorities();
+	PyObject* result = PyList_New(prioList.size());
+
+	for(int i = 0; i < prioList.size(); ++i)
+	{
+		PyList_SET_ITEM(result, i, Py_BuildValue("i", prioList.at(i)));
+	}
+	return result;
+}
+
+PyObject* PluginModule::wrapGetVisiblePriority(PyObject *, PyObject *args)
+{
+	return Py_BuildValue("i", getPlugin()->getVisiblePriority());
+}
+
+PyObject* PluginModule::wrapSetVisiblePriority(PyObject *, PyObject *args)
+{
+	// check if we have aborted already
+	if (getPlugin()->isInterruptionRequested()) Py_RETURN_NONE;
+
+	int priority;
+
+	int argCount = PyTuple_Size(args);
+	if(argCount == 1 && PyArg_ParseTuple(args, "i", &priority))
+	{
+		return Py_BuildValue("i", getPlugin()->setVisiblePriority(priority));
+	}
+	PyErr_SetString(PyExc_RuntimeError, "Invalid argument for setPriority()");
 	return nullptr;
 }
 

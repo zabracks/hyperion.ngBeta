@@ -152,7 +152,7 @@ public:
 	bool isCurrentPriority(const int priority) const;
 
 	///
-	/// Returns a list of active priorities
+	/// Returns a list of all registered  priorities
 	///
 	/// @return The list with priorities
 	///
@@ -184,7 +184,7 @@ public:
 
 	/// gets the current json config object from SettingsManager
 	/// @return json config
-	const QJsonObject& getQJsonConfig();
+	const QJsonObject & getQJsonConfig();
 
 	/// get path+filename of configfile
 	/// @return the current config path+filename
@@ -232,6 +232,14 @@ public:
 	/// @param state The state of the component [true | false]
 	///
 	void setComponentState(const hyperion::Components component, const bool state);
+
+	///
+	/// @brief Get current state of a component
+	///
+	/// @param component The component from enum
+	/// @return 1 if enabled, 0 if disabled, -1 if not found;
+	///
+	int getComponentState(const hyperion::Components& component) const;
 
 	ComponentRegister& getComponentRegister() { return _componentRegister; };
 

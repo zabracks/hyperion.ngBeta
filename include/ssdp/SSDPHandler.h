@@ -10,8 +10,7 @@ class QNetworkConfigurationManager;
 ///
 /// Manage SSDP discovery. SimpleServiceDisoveryProtocol is the discovery subset of UPnP. Implemented is spec V1.0.
 /// As SSDP requires a webserver, this class depends on it
-/// UPnP 2.0: spec: http://upnp.org/specs/arch/UPnP-arch-DeviceArchitecture-v2.0.pdf
-/// Detailed blog post: https://embeddedinn.wordpress.com/tutorials/upnp-device-architecture/
+/// UPnP 1.0: spec: http://upnp.org/specs/arch/UPnP-arch-DeviceArchitecture-v1.0.pdf
 ///
 
 class SSDPHandler : public SSDPServer{
