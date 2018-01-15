@@ -89,8 +89,6 @@ void Plugin::run()
 	else
 	{
 		PyObject *f = PyUnicode_FromString(QSTRING_CSTR(_def.entryPy)); // New ref
-		//PyDict_SetItemString(moduleDict, "__file__", f);
-		//onPythonModuleInitialization(moduleDict);
 		Py_DECREF(f);
 
 		PyObject *main_module = PyImport_ImportModule("__main__"); // New Reference
@@ -383,6 +381,10 @@ void Plugin::handlePluginAction(PluginAction action, QString id, bool success, P
 		auto it = callbackObjects.find("ON_SETTINGS_CHANGED");
 		if (it != callbackObjects.end())
 		{
+			PyEval_RestoreThread(_state);
+			PyThreadState * threadState = PyThreadState_New(_state->interp); // create a thread state object for this thread
+			PyThreadState_Swap(threadState); // swap in the thread state
+
 			PyObject *data = nullptr;
 			// Verify that ON_SETTINGS_CHANGED is a proper callable
 			if (it.value() && PyCallable_Check(it.value()))
@@ -397,6 +399,10 @@ void Plugin::handlePluginAction(PluginAction action, QString id, bool success, P
 
 			// release "data" when done
 			Py_XDECREF(data);
+
+			PyThreadState_Swap(NULL); // swap the thread state out of the interpreter
+			PyThreadState_Delete(threadState); // delete the thread state object
+			PyEval_ReleaseLock(); // release the lock
 		}
 	}
 }

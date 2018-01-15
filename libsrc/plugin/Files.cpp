@@ -15,21 +15,18 @@
 // QuaZip
 #include <JlCompress.h>
 
-Files::Files(const QString& rootPath, const QString& id, PluginTable* PDB)
+Files::Files(const QString& rootPath, PluginTable* PDB)
 	: QObject()
 	, _log(Logger::getInstance("PLUGINS"))
-	, _id(id)
 	, _PDB(PDB)
 	, _http(new HTTPUtils(_log))
 {
 	// create folder structure
 	_pluginsDir = rootPath + "/plugins";
 	_packageDir = _pluginsDir + "/packages";
-	_configDir = _pluginsDir + "/config_"+id;
 
 	QDir dir;
 	dir.mkpath(_packageDir);
-	dir.mkpath(_configDir);
 
 	// listen for http utils reply
 	connect(_http, &HTTPUtils::replyReceived, this, &Files::replyReceived);
@@ -84,16 +81,15 @@ void Files::replyReceived(bool success, int type, QString id, QByteArray data)
 			for(const auto & e : arr)
 			{
 				QJsonObject metaObj = e.toObject();
-				PluginDefinition newDefinition{
-					metaObj["name"].toString(),
-					metaObj["description"].toString(),
-					metaObj["version"].toString(),
-					metaObj["dependencies"].toObject(),
-					metaObj["changelog"].toArray(),
-					metaObj["provider"].toString(),
-					metaObj["support"].toString(),
-					metaObj["source"].toString()
-				};
+				PluginDefinition newDefinition;
+				newDefinition.name = metaObj["name"].toString();
+				newDefinition.description = metaObj["description"].toString();
+				newDefinition.version = metaObj["version"].toString();
+				newDefinition.dependencies = metaObj["dependencies"].toObject();
+				newDefinition.changelog = metaObj["changelog"].toArray();
+				newDefinition.provider = metaObj["provider"].toString();
+				newDefinition.support = metaObj["support"].toString();
+				newDefinition.source = metaObj["source"].toString();
 				QString pid = metaObj["id"].toString();
 				_availablePlugins.insert(pid,newDefinition);
 			}
@@ -209,8 +205,6 @@ void Files::removePlugin(const QString& id)
 {
 	if(FileUtils::removeDir(_pluginsDir+"/"+id, _log))
 	{
-		FileUtils::removeFile(_configDir+"/"+id+".json", _log, true);
-
 		_installedPlugins.remove(id);
 		_PDB->deletePluginRecord(id);
 		Info(_log,"Plugin id '%s' deleted successfully",QSTRING_CSTR(id));
@@ -238,7 +232,7 @@ void Files::saveSettings(const QString& id, const QJsonObject& settings)
 		emit pluginAction(P_SAVED, id, false);
 		return;
 	}
-	if(JsonUtils::write(_configDir+"/"+id+".json", settings, _log))
+	if(_PDB->saveSettings(id, settings))
 	{
 		// update the definition
 		newDef.settings = settings;
@@ -379,33 +373,34 @@ bool Files::updateInstalledPlugin(const QString& tid, const bool& skipStart)
 		if(!FileUtils::fileExists(pd+"/service.py",_log))
 			return false;
 
-		// get settings if available
-		JsonUtils::readFile(_configDir+"/"+id+".json", settingsObj, _log, true);
-
 		// point to service.py
 		entryPy = "/service.py";
 
 		// load translations??
 	}
 
-	// create the PluginDefinition
-	PluginDefinition newDefinition{
-		metaObj["name"].toString(),
-		metaObj["description"].toString(),
-		metaObj["version"].toString(),
-		metaObj["dependencies"].toObject(),
-		metaObj["changelog"].toArray(),
-		metaObj["provider"].toString(),
-		metaObj["support"].toString(),
-		metaObj["source"].toString(),
-		pd+entryPy,
-		settingsSchemaObj,
-		settingsObj
-	};
-	_installedPlugins.insert(id,newDefinition);
-
 	// create database entry if required
 	_PDB->createPluginRecord(id);
+
+	// read settings from db
+	settingsObj = _PDB->getSettings(id).toObject();
+
+	// create the PluginDefinition
+	PluginDefinition newDefinition;
+	newDefinition.name = metaObj["name"].toString();
+	newDefinition.description = metaObj["description"].toString();
+	newDefinition.version = metaObj["version"].toString();
+	newDefinition.dependencies = metaObj["dependencies"].toObject();
+	newDefinition.changelog = metaObj["changelog"].toArray();
+	newDefinition.provider = metaObj["provider"].toString();
+	newDefinition.support = metaObj["support"].toString();
+	newDefinition.source = metaObj["source"].toString();
+	newDefinition.entryPy = pd+entryPy;
+	newDefinition.settingsSchema = settingsSchemaObj;
+	newDefinition.settings = settingsObj;
+
+	_installedPlugins.insert(id,newDefinition);
+
 	// start/restart(for updated plugins) service if enabled in db
 	if(!skipStart && id.startsWith("service.") && _PDB->isPluginEnabled(id))
 	{

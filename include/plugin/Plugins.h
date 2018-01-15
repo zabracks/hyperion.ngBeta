@@ -21,7 +21,7 @@ public:
 	///
 	/// Plugin constructor
 	///
-	Plugins(Hyperion* hyperion);
+	Plugins(Hyperion* hyperion, const quint8& instance);
 	~Plugins();
 
 	QMap<QString, PluginDefinition> getInstalledPlugins(void) const { return _files.getInstalledPlugins(); };

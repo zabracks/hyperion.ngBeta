@@ -133,14 +133,6 @@ int main(int argc, char** argv)
 	signal(SIGCHLD, signal_handler);
 	signal(SIGPIPE, signal_handler);
 
-	// one instance check
-	QSharedMemory sharedMemory("8c1ea6a4da5043c6ab26af8be20b845d3fmx8hg", app.data() );
-	if (!sharedMemory.create(1))
-	{
-		printf ("Hyperion Daemon (hyperiond) is already running, you can't start multiple sessions.\n");
- 		exit (1);
-	}
-
 	// force the locale
 	setlocale(LC_ALL, "C");
 	QLocale::setDefault(QLocale::c());
@@ -323,6 +315,14 @@ int main(int argc, char** argv)
 #endif
 	}
 
+	// one instance check
+/*	QSharedMemory sharedMemory("8c1ea6a4da5043c6ab26af8be20b845d3fmx8hgjl", app.data() );
+	if (!sharedMemory.create(1))
+	{
+		printf ("Hyperion Daemon (hyperiond) is already running, you can't start multiple sessions.\n");
+ 		return 1;
+	}
+*/
 
 	HyperionDaemon* hyperiond = nullptr;
 	try

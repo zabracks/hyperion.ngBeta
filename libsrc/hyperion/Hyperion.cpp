@@ -139,6 +139,9 @@ Hyperion::Hyperion(HyperionDaemon* daemon, const quint8& instance, const QString
 	_effectEngine = new EffectEngine(this,getSetting(settings::EFFECTS).object());
 	connect(_effectEngine, &EffectEngine::effectListUpdated, this, &Hyperion::effectListUpdated);
 
+	// init plugins
+	_plugins = new Plugins(this, instance);
+
 	// setup config state checks and initial shot
 	checkConfigState();
 	if(_fsWatcher.addPath(_configFile))
@@ -163,9 +166,6 @@ Hyperion::Hyperion(HyperionDaemon* daemon, const quint8& instance, const QString
 
 	// if there is no startup / background eff and no sending capture interface we probably want to push once BLACK (as PrioMuxer won't emit a prioritiy change)
 	update();
-
-	// init plugins
-	_plugins = new Plugins(this);
 }
 
 Hyperion::~Hyperion()

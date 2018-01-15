@@ -3,12 +3,12 @@
 #include "Plugin.h"
 #include <db/PluginTable.h>
 
-Plugins::Plugins(Hyperion* hyperion)
+Plugins::Plugins(Hyperion* hyperion, const quint8& instance)
 	: QObject()
 	, _log(Logger::getInstance("PLUGINS"))
 	, _hyperion(hyperion)
-	, _PDB(new PluginTable(_hyperion->getConfigFileName()))
-	, _files(_hyperion->getRootPath(), _hyperion->getConfigFileName(), _PDB)
+	, _PDB(new PluginTable(instance))
+	, _files(_hyperion->getRootPath(), _PDB)
 {
 	// register metyTypes for QueuedConnection
 	qRegisterMetaType<PluginAction>("PluginAction");
@@ -22,7 +22,6 @@ Plugins::Plugins(Hyperion* hyperion)
 
 	// file handling init after database creation and signal link
 	_files.init();
-
 }
 
 Plugins::~Plugins()

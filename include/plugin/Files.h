@@ -18,10 +18,9 @@ public:
 	///
 	/// @brief Constructor
 	/// @param[in]  rootPath rootPath of hyperion user data
-	/// @param[in]  id       id of hyperion
 	/// @param[in]  PDB      PluginTable instance
 	///
-	Files(const QString& rootPath, const QString& id, PluginTable* PDB);
+	Files(const QString& rootPath, PluginTable* PDB);
 	~Files();
 
 	/// init files
@@ -49,8 +48,6 @@ signals:
 private:
 	/// Logger instance
 	Logger* _log;
-	/// id of hyperion
-	const QString _id;
 	/// PluginTable instance
 	PluginTable* _PDB;
 	/// HTTP Utils instance
@@ -59,7 +56,6 @@ private:
 	/// plugins, package, config dir
 	QString _pluginsDir;
 	QString _packageDir;
-	QString _configDir;
 
 	/// repo url
 	const QString _rUrl = "https://api.hyperion-project.org/redir.php?plugin_repo=true";
