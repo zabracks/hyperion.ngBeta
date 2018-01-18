@@ -102,7 +102,7 @@ fi
 
 echo "-----------------------------------------------------------------------------"
 echo "--> Hyperion has been installed/updated!"
-echo "--> For configuration, visit with your browser: ${address}"
+echo "--> For configuration, visit with with your browser: ${address}"
 $REBOOTMESSAGE
 echo "-----------------------------------------------------------------------------"
 echo "Webpage: www.hyperion-project.org"
@@ -110,28 +110,12 @@ echo "Wiki: wiki.hyperion-project.org"
 echo "Forum: forum.hyperion-project.org"
 echo "-----------------------------------------------------------------------------"
 
-# try to open the browser for desktops. TODO: add headless detection(?)
-if	[ $CPU_X32X64 -eq 1]
-echo "--> Will open browser with target: ${address}"
-	if [[ -e /usr/bin/xdg-open ]]
-		then
-		xdg-open http://"$address"
-	elif [[ -e /usr/bin/x-www-browser ]]
-		then
-		x-www-browser http://"$address"
-	elif [[ -e /usr/bin/www-browser ]]
-		then
-		www-browser http://"$address"
-	fi
-fi
-
 
 if [ -e /opt/hyperion/ ]
 then
 	echo
 	echo "---------------------------------------------------------------------------------"
 	echo "- It seemd that you have an older version of hyperion installed in /opt/hyerion -"
-	echo "- please remove it and check your config to avoid problems                      -"
+	echo "- please remove it to avoid problems                                            -"
 	echo "---------------------------------------------------------------------------------"
 fi
-

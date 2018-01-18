@@ -5,23 +5,23 @@ USE_SYSTEMD=`grep -m1 -c systemd /proc/1/comm`
 USE_INITCTL=`which /sbin/initctl | wc -l`
 USE_SERVICE=`which /usr/sbin/service | wc -l`
 
+# Stop hyperion daemon if it is running
+echo '---> Stop Hyperion, if necessary'
+if [ $USE_SYSTEMD -eq 1 ]; then
+	systemctl stop hyperiond 2>/dev/null
+elif [ $USE_INITCTL -eq 1 ]; then
+	/sbin/initctl stop hyperiond 2>/dev/null
+elif [ $USE_SERVICE -eq 1 ]; then
+	/usr/sbin/service hyperiond stop 2>/dev/null
+fi
+
 #check for hyperion install
 if [ -d /usr/share/hyperion/bin ];then
 	if [ -e /etc/hyperion/hyperion.config.json ];then
 		file=`grep -m1 -c '"general"' /etc/hyperion/hyperion.config.json`
 		if [ $file -ne 1 ]; then
 			echo "--> It seems you are running an old version of Hyperion (1.X). Will create a backup at /usr/share/hyperion/Backup_Hyperion_1.0 and reset configuration / system service"
-		
-			# Stop hyperion daemon if it is running
-			echo '---> Stop Hyperion, if necessary'
-			if [ $USE_SYSTEMD -eq 1 ]; then
-				service hyperion stop 2>/dev/null
-			elif [ $USE_INITCTL -eq 1 ]; then
-				/sbin/initctl stop hyperion 2>/dev/null
-			elif [ $USE_SERVICE -eq 1 ]; then
-				/usr/sbin/service hyperion stop 2>/dev/null
-			fi
-		
+
 			#Backup
 			echo "--> Move old config(s) and files to /usr/share/hyperion/Backup_Hyperion_1.0"
 			mkdir  /usr/share/hyperion/Backup_Hyperion_1.0
@@ -44,7 +44,7 @@ if [ -d /usr/share/hyperion/bin ];then
 				update-rc.d -f hyperion remove
 				rm /etc/init.d/hyperion* 2>/dev/null
 			fi
-		
+
 			echo "--> Hyperion 1.0 installation has been moved"
 		fi
 	fi

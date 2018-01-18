@@ -1,4 +1,4 @@
-find_package(PythonLibs 3.4 REQUIRED)
+find_package(PythonLibs 3.5 REQUIRED)
 
 # Define the current source locations
 set(QUAZIP_HEADER_DIR ${CMAKE_SOURCE_DIR}/dependencies/build/quazip)

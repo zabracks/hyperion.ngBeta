@@ -246,7 +246,7 @@ if (UNIX AND NOT APPLE)
 endif ()
 
 # add QT5 dependency
-SET(QT_MIN_VERSION "5.2.0")
+SET(QT_MIN_VERSION "5.5.0")
 find_package(Qt5 COMPONENTS Core Gui Network SerialPort Sql REQUIRED)
 message( STATUS "Found Qt Version: ${Qt5Core_VERSION}" )
 IF ( "${Qt5Core_VERSION}" VERSION_LESS "${QT_MIN_VERSION}" )

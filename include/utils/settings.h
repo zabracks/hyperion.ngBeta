@@ -94,6 +94,7 @@ inline type stringToType(const QString& type)
 	if (type == "webConfig")            return WEBSERVER;
 	if (type == "instCapture")          return INSTCAPTURE;
 	if (type == "network")              return NETWORK;
-	                                    return INVALID;
+
+	return INVALID;
 }
 };
