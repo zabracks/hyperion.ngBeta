@@ -15,7 +15,6 @@ target_link_libraries(hyperiond
 		hyperion
 		effectengine
 		jsonserver
-		boblightserver
 		udplistener
 		protoserver
 		webserver

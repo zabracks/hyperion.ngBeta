@@ -30,6 +30,7 @@ public:
 		QObject* caller;
 		uint64_t timeoutTime;
 		QString token;
+		QString lastUse;
 	};
 
 	///

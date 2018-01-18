@@ -50,6 +50,7 @@ class Plugins;
 class SettingsManager;
 class BGEffectHandler;
 class CaptureCont;
+class BoblightServer;
 
 ///
 /// The main class of Hyperion. This gives other 'users' access to the attached LedDevice through
@@ -111,6 +112,8 @@ public:
 	/// @return      PriorityMuxer instance pointer
 	///
 	PriorityMuxer* getMuxerInstance() { return &_muxer; };
+
+	ImageProcessor* getImageProcessor() { return _imageProcessor; };
 
 	///
 	/// @brief Get a setting by settings::type from SettingsManager
@@ -550,4 +553,7 @@ private:
 	std::vector<ColorRgb> _ledBuffer;
 	/// buffer for leds (without adjustment)
 	std::vector<ColorRgb> _rawLedBuffer;
+
+	/// Boblight instance
+	BoblightServer* _boblightServer;
 };

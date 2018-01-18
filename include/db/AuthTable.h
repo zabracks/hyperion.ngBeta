@@ -144,13 +144,13 @@ public:
 	}
 
 	///
-	/// @brief Get all 'comment' amd 'id' column entries
+	/// @brief Get all 'comment', 'last_use' and 'id' column entries
 	/// @return            A vector of all lists
 	///
 	inline const QVector<QVariantMap> getTokenList()
 	{
 		QVector<QVariantMap> results;
-		getRecords(results, QStringList() << "comment" << "id");
+		getRecords(results, QStringList() << "comment" << "id" << "last_use");
 
 		return results;
 	}

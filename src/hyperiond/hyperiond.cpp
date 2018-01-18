@@ -21,7 +21,6 @@
 #include <hyperion/Hyperion.h>
 #include <jsonserver/JsonServer.h>
 #include <protoserver/ProtoServer.h>
-#include <boblightserver/BoblightServer.h>
 #include <udplistener/UDPListener.h>
 #include <webserver/WebServer.h>
 #include <utils/Stats.h>
@@ -58,7 +57,6 @@ HyperionDaemon::HyperionDaemon(QString configFile, const QString rootPath, QObje
 	, _webserver(nullptr)
 	, _jsonServer(nullptr)
 	, _protoServer(nullptr)
-	, _boblightServer(nullptr)
 	, _udpListener(nullptr)
 	, _v4l2Grabbers()
 	, _dispmanx(nullptr)
@@ -157,7 +155,6 @@ void HyperionDaemon::freeObjects()
 	delete _webserver;
 	delete _jsonServer;
 	delete _protoServer;
-	delete _boblightServer;
 	delete _udpListener;
 
 	delete _bonjourBrowserWrapper;
@@ -180,7 +177,6 @@ void HyperionDaemon::freeObjects()
 	_webserver      = nullptr;
 	_jsonServer     = nullptr;
 	_protoServer    = nullptr;
-	_boblightServer = nullptr;
 	_udpListener    = nullptr;
 	_stats          = nullptr;
 }
@@ -195,10 +191,6 @@ void HyperionDaemon::startNetworkServices()
 	_protoServer = new ProtoServer(getSetting(settings::PROTOSERVER));
 	connect(this, &HyperionDaemon::settingsChanged, _protoServer, &ProtoServer::handleSettingsUpdate);
 	//QObject::connect(_hyperion, SIGNAL(videoMode(VideoMode)), _protoServer, SLOT(setVideoMode(VideoMode)));
-
-	// boblight server
-	_boblightServer = new BoblightServer(getSetting(settings::BOBLSERVER));
-	connect(this, &HyperionDaemon::settingsChanged, _boblightServer, &BoblightServer::handleSettingsUpdate);
 
 	// Create UDP listener
 	_udpListener = new UDPListener(getSetting(settings::UDPLISTENER));

@@ -1144,6 +1144,7 @@ void JsonAPI::handleAuthorizeCommand(const QJsonObject & message, const QString 
 				QJsonObject subO;
 				subO["comment"] = entry.comment;
 				subO["id"] = entry.id;
+				subO["last_use"] = entry.lastUse;
 
 				tArr.append(subO);
 			}

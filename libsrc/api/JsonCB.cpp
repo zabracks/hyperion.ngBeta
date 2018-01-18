@@ -150,7 +150,7 @@ void JsonCB::handlePluginAction(PluginAction action, QString id, bool success, P
 			break;
 	}
 	if(send)
-		doCallback("components-update", QVariant(data));
+		doCallback("plugins-update", QVariant(data));
 }
 
 void JsonCB::handleBonjourChange(const QMap<QString,BonjourRecord>& bRegisters)

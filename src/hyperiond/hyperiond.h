@@ -50,7 +50,6 @@ class Hyperion;
 class SysTray;
 class JsonServer;
 class ProtoServer;
-class BoblightServer;
 class UDPListener;
 class Stats;
 class BonjourBrowserWrapper;
@@ -140,7 +139,6 @@ private:
 	WebServer*             _webserver;
 	JsonServer*            _jsonServer;
 	ProtoServer*           _protoServer;
-	BoblightServer*        _boblightServer;
 	UDPListener*           _udpListener;
 	std::vector<V4L2Wrapper*>  _v4l2Grabbers;
 	DispmanxWrapper*       _dispmanx;

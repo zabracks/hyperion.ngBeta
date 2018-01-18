@@ -50,6 +50,9 @@
 // CaptureControl (Daemon capture)
 #include <hyperion/CaptureCont.h>
 
+// Boblight
+#include <boblightserver/BoblightServer.h>
+
 Hyperion* Hyperion::_hyperion = nullptr;
 
 Hyperion* Hyperion::initInstance( HyperionDaemon* daemon, const quint8& instance, const QString configFile, const QString rootPath)
@@ -166,6 +169,11 @@ Hyperion::Hyperion(HyperionDaemon* daemon, const quint8& instance, const QString
 
 	// if there is no startup / background eff and no sending capture interface we probably want to push once BLACK (as PrioMuxer won't emit a prioritiy change)
 	update();
+
+	// boblight, can't live in global scope as it depends on layout
+
+	_boblightServer = new BoblightServer(this, getSetting(settings::BOBLSERVER));
+	connect(this, &Hyperion::settingsChanged, _boblightServer, &BoblightServer::handleSettingsUpdate);
 }
 
 Hyperion::~Hyperion()
@@ -185,6 +193,7 @@ void Hyperion::freeObjects(bool emitCloseSignal)
 	}
 
 	// delete components on exit of hyperion core
+	delete _boblightServer;
 	delete _captureCont;
 	delete _plugins;
 	delete _effectEngine;

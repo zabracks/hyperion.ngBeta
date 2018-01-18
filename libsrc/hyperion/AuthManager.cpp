@@ -63,8 +63,11 @@ const QVector<AuthManager::AuthDefinition> AuthManager::getTokenList()
 		AuthDefinition def;
 		def.comment = entry["comment"].toString();
 		def.id = entry["id"].toString();
+		def.lastUse = entry["last_use"].toString();
 
-		finalVec.append(def);
+		// don't add empty ids
+		if(!entry["id"].toString().isEmpty())
+			finalVec.append(def);
 	}
 	return finalVec;
 }
