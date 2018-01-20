@@ -39,7 +39,7 @@ DispmanxFrameGrabber::DispmanxFrameGrabber(const unsigned width, const unsigned 
 	vc_dispmanx_display_close(_vc_display);
 
 	// init the resource and capture rectangle
-	setWidthHeight(vc_info.width, vc_info.height);
+	setWidthHeight(width, height);
 }
 
 DispmanxFrameGrabber::~DispmanxFrameGrabber()
@@ -62,7 +62,9 @@ void DispmanxFrameGrabber::setWidthHeight(int width, int height)
 	if(_width != width || _height != height)
 	{
 		qDebug()<<"setWidhtHeight width x height: "<<width<<"x"<<height;
-		//freeResources();
+		if(_vc_resource != 0)
+			freeResources();
+
 		// Create the resources for capturing image
 		uint32_t vc_nativeImageHandle;
 		_vc_resource = vc_dispmanx_resource_create(
@@ -74,6 +76,9 @@ void DispmanxFrameGrabber::setWidthHeight(int width, int height)
 
 		// Define the capture rectangle with the same size
 		vc_dispmanx_rect_set(&_rectangle, 0, 0, width, height);
+
+		_width = width;
+		_height = height;
 	}
 }
 
@@ -85,7 +90,7 @@ void DispmanxFrameGrabber::setFlags(const int vc_flags)
 int DispmanxFrameGrabber::grabFrame(Image<ColorRgb> & image)
 {
 	if (!_enabled) return 0;
-	
+
 	int ret;
 
 	// vc_dispmanx_resource_read_data doesn't seem to work well

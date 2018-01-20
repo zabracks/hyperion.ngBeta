@@ -6,10 +6,7 @@
 #include "JsonClientConnection.h"
 
 // hyperion include
-#include <hyperion/Hyperion.h>
-#include <hyperion/MessageForwarder.h>
 #include <bonjour/bonjourserviceregister.h>
-#include <hyperion/ComponentRegister.h>
 #include <utils/NetOrigin.h>
 
 // qt includes
@@ -21,10 +18,8 @@
 JsonServer::JsonServer(const QJsonDocument& config)
 	: QObject()
 	, _server(new QTcpServer(this))
-	, _hyperion(Hyperion::getInstance())
 	, _openConnections()
 	, _log(Logger::getInstance("JSONSERVER"))
-	, _componentRegister( & _hyperion->getComponentRegister())
 	, _netOrigin(NetOrigin::getInstance())
 {
 	Debug(_log, "Created instance");
@@ -32,17 +27,8 @@ JsonServer::JsonServer(const QJsonDocument& config)
 	// Set trigger for incoming connections
 	connect(_server, SIGNAL(newConnection()), this, SLOT(newConnection()));
 
-	// receive state of forwarder
-	connect(_componentRegister, &ComponentRegister::updatedComponentState, this, &JsonServer::componentStateChanged);
-
-	// listen for component register changes
-	connect(_hyperion, &Hyperion::forwardJsonMessage, this, &JsonServer::forwardJsonMessage);
-
 	// init
 	handleSettingsUpdate(settings::JSONSERVER, config);
-
-	// set initial state of forwarding
-	componentStateChanged(hyperion::COMP_FORWARDER, _componentRegister->isComponentEnabled(hyperion::COMP_FORWARDER));
 }
 
 JsonServer::~JsonServer()
@@ -136,38 +122,6 @@ void JsonServer::closedConnection(void)
 
 	// schedule to delete the connection object
 	connection->deleteLater();
-}
-
-void JsonServer::componentStateChanged(const hyperion::Components component, bool enable)
-{
-	if (component == hyperion::COMP_FORWARDER)
-	{
-		if(enable)
-		{
-			connect(_hyperion, &Hyperion::forwardJsonMessage, this, &JsonServer::forwardJsonMessage);
-		}
-		else
-		{
-			disconnect(_hyperion, &Hyperion::forwardJsonMessage, this, &JsonServer::forwardJsonMessage);
-		}
-	}
-}
-
-void JsonServer::forwardJsonMessage(const QJsonObject &message)
-{
-	QTcpSocket client;
-	QStringList list = _hyperion->getForwarder()->getJsonSlaves();
-
-	for (const auto& entry : list)
-	{
-		QStringList splitted = entry.split(":");
-		client.connectToHost(splitted[0], splitted[1].toInt());
-		if ( client.waitForConnected(500) )
-		{
-			sendMessage(message,&client);
-			client.close();
-		}
-	}
 }
 
 void JsonServer::sendMessage(const QJsonObject & message, QTcpSocket * socket)
