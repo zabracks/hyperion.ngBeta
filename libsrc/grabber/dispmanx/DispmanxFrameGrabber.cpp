@@ -63,7 +63,7 @@ void DispmanxFrameGrabber::setWidthHeight(int width, int height)
 	{
 		qDebug()<<"setWidhtHeight width x height: "<<width<<"x"<<height;
 		if(_vc_resource != 0)
-			freeResources();
+			vc_dispmanx_resource_delete(_vc_resource);
 
 		// Create the resources for capturing image
 		uint32_t vc_nativeImageHandle;
