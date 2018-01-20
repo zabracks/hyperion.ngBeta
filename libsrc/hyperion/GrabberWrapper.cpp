@@ -3,19 +3,14 @@
 #include <hyperion/Grabber.h>
 #include <HyperionConfig.h>
 
-//forwarder
-#include <hyperion/MessageForwarder.h>
-
 // qt
 #include <QTimer>
 
 GrabberWrapper::GrabberWrapper(QString grabberName, Grabber * ggrabber, unsigned width, unsigned height, const unsigned updateRate_Hz)
 	: _grabberName(grabberName)
-	, _hyperion(Hyperion::getInstance())
 	, _timer(new QTimer(this))
 	, _updateInterval_ms(1000/updateRate_Hz)
 	, _log(Logger::getInstance(grabberName))
-	, _forward(true)
 	, _ggrabber(ggrabber)
 	, _image(0,0)
 {
@@ -23,8 +18,6 @@ GrabberWrapper::GrabberWrapper(QString grabberName, Grabber * ggrabber, unsigned
 	_timer->setInterval(_updateInterval_ms);
 
 	_image.resize(width, height);
-
-	_forward = _hyperion->getForwarder()->protoForwardingEnabled();
 
 	connect(_timer, &QTimer::timeout, this, &GrabberWrapper::action);
 }

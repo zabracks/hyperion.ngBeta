@@ -6,11 +6,12 @@
 
 #include <utils/Logger.h>
 #include <utils/Components.h>
-#include <hyperion/Hyperion.h>
 #include <utils/Image.h>
 #include <utils/ColorRgb.h>
 #include <utils/VideoMode.h>
 #include <utils/settings.h>
+
+#include <QDebug>
 
 class Grabber;
 class DispmanxFrameGrabber;
@@ -51,6 +52,7 @@ public:
 		}
 
 		int ret = grabber.grabFrame(_image);
+		qDebug()<<"GrabFrame returned:"<<ret;
 		if (ret >= 0)
 		{
 			emit systemImage(_image);
@@ -98,9 +100,6 @@ protected:
 
 	QString _grabberName;
 
-	/// Pointer to Hyperion for writing led values
-	Hyperion * _hyperion;
-
 	/// The timer for generating events with the specified update rate
 	QTimer* _timer;
 
@@ -109,9 +108,6 @@ protected:
 
 	/// The Logger instance
 	Logger * _log;
-
-	// forwarding enabled
-	bool _forward;
 
 	Grabber *_ggrabber;
 
