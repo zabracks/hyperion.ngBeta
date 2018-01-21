@@ -6,8 +6,6 @@
 // Local includes
 #include "grabber/DispmanxFrameGrabber.h"
 
-#include <QDebug>
-
 DispmanxFrameGrabber::DispmanxFrameGrabber(const unsigned width, const unsigned height)
 	: Grabber("DISPMANXGRABBER", 0, 0)
 	, _vc_display(0)
@@ -61,7 +59,6 @@ void DispmanxFrameGrabber::setWidthHeight(int width, int height)
 {
 	if(_width != width || _height != height)
 	{
-		qDebug()<<"setWidhtHeight width x height: "<<width<<"x"<<height;
 		if(_vc_resource != 0)
 			vc_dispmanx_resource_delete(_vc_resource);
 

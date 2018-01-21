@@ -13,8 +13,6 @@
 #include <utils/VideoMode.h>
 #include <utils/settings.h>
 
-#include <QDebug>
-
 class Grabber;
 class DispmanxFrameGrabber;
 class QTimer;
@@ -54,7 +52,7 @@ public:
 		}
 
 		int ret = grabber.grabFrame(_image);
-		qDebug()<<"GrabFrame returned:"<<ret;
+
 		if (ret >= 0)
 		{
 			emit systemImage(_image);
