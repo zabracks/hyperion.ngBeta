@@ -444,6 +444,11 @@ const bool Hyperion::setInputImage(const int priority, const Image<ColorRgb>& im
 	return false;
 }
 
+const bool Hyperion::setInputInactive(const quint8& priority)
+{
+	return _muxer.setInputInactive(priority);
+}
+
 void Hyperion::setColor(int priority, const ColorRgb &color, const int timeout_ms, const QString& origin, bool clearEffects)
 {
 	// clear effect if this call does not come from an effect

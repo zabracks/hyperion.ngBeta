@@ -18,6 +18,7 @@
 
 #include <QDirIterator>
 #include <QFileInfo>
+#include <QTimer>
 #include <QDateTime>
 
 #include "grabber/V4L2Grabber.h"
@@ -52,8 +53,12 @@ V4L2Grabber::V4L2Grabber(const QString & device
 	, _streamNotifier(nullptr)
 	, _initialized(false)
 	, _deviceAutoDiscoverEnabled(false)
-
+	, _readFrameAdaptTimer(new QTimer(this))
 {
+	// setup stream notfiy locker with 10hz
+	connect(_readFrameAdaptTimer, &QTimer::timeout, this, &V4L2Grabber::unlockReadFrame);
+	_readFrameAdaptTimer->setInterval(100);
+
 	setPixelDecimation(pixelDecimation);
 
 	getV4Ldevices();
@@ -73,7 +78,7 @@ void V4L2Grabber::uninit()
 	if (_initialized)
 	{
 		Debug(_log,"uninit grabber: %s", QSTRING_CSTR(_deviceName));
-			
+		_readFrameAdaptTimer->stop();
 		stop();
 		uninit_device();
 		close_device();
@@ -143,6 +148,7 @@ bool V4L2Grabber::init()
 				opened = true;
 				init_device(_videoStandard, _input);
 				_initialized = true;
+				_readFrameAdaptTimer->start();
 			}
 		}
 		catch(std::exception& e)
@@ -710,6 +716,10 @@ void V4L2Grabber::stop_capturing()
 #include <QDebug>
 int V4L2Grabber::read_frame()
 {
+	// read_frame() is called with 25Hz, adapt to 10Hz. In the end it's up to the stream notifier if we get calls or not
+	if(!_readFrame) return -1;
+	_readFrame = false;
+
 	qDebug()<<"read_frame time: "<<QDateTime::currentMSecsSinceEpoch();
 	bool rc = false;
 

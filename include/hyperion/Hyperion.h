@@ -293,6 +293,13 @@ public slots:
 	const bool setInputImage(const int priority, const Image<ColorRgb>& image, int64_t timeout_ms = -1, const bool& clearEffect = true);
 
 	///
+	/// @brief Set the given priority to inactive
+	/// @param priority  The priority
+	/// @return True on success false if not found
+	///
+	const bool setInputInactive(const quint8& priority);
+
+	///
 	/// Writes a single color to all the leds for the given time and priority
 	/// Registers comp color or provided type against muxer
 	/// Should be never used to update leds continuous

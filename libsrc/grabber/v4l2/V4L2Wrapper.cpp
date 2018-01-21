@@ -64,7 +64,7 @@ void V4L2Wrapper::readError(const char* err)
 
 void V4L2Wrapper::action()
 {
-
+	// dummy as v4l get notifications from stream
 }
 
 void V4L2Wrapper::setSignalDetectionEnable(bool enable)
