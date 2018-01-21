@@ -58,7 +58,6 @@
 	[
 		{
 			"device"   : "auto",
-			"input"    : 0,
 			"standard" : "NO_CHANGE",
 			"sizeDecimation"  : 8,
 			"cropLeft"    : 0,

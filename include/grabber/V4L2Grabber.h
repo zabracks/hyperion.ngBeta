@@ -23,7 +23,6 @@ class V4L2Grabber : public Grabber
 
 public:
 	V4L2Grabber(const QString & device,
-			int input,
 			VideoStandard videoStandard,
 			PixelFormat pixelFormat,
 			int pixelDecimation
@@ -70,8 +69,8 @@ public:
 
 	///
 	/// @brief overwrite Grabber.h implementation
-	/// 
-	virtual void setInputVideoStandard(int input, VideoStandard videoStandard);
+	///
+	virtual void setDeviceVideoStandard(QString device, VideoStandard videoStandard);
 
 public slots:
 

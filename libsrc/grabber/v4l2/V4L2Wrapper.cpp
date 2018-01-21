@@ -6,13 +6,11 @@
 #include <QTimer>
 
 V4L2Wrapper::V4L2Wrapper(const QString &device,
-		int input,
 		VideoStandard videoStandard,
 		PixelFormat pixelFormat,
 		int pixelDecimation )
 	: GrabberWrapper("V4L2:"+device, &_grabber, 0, 0, 10)
 	, _grabber(device,
-			input,
 			videoStandard,
 			pixelFormat,
 			pixelDecimation)

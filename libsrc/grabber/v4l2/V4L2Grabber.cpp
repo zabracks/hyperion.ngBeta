@@ -18,26 +18,26 @@
 
 #include <QDirIterator>
 #include <QFileInfo>
+#include <QDateTime>
 
 #include "grabber/V4L2Grabber.h"
 
 #define CLEAR(x) memset(&(x), 0, sizeof(x))
 
 V4L2Grabber::V4L2Grabber(const QString & device
-		, int input
 		, VideoStandard videoStandard
 		, PixelFormat pixelFormat
 		, int pixelDecimation
 		)
 	: Grabber("V4L2:"+device)
-	, _deviceName(device)
-	, _input(input)
+	, _deviceName()
+	, _input(-1)
 	, _videoStandard(videoStandard)
 	, _ioMethod(IO_METHOD_MMAP)
 	, _fileDescriptor(-1)
 	, _buffers()
 	, _pixelFormat(pixelFormat)
-	, _pixelDecimation(pixelDecimation)
+	, _pixelDecimation(-1)
 	, _lineLength(-1)
 	, _frameByteSize(-1)
 	, _noSignalCounterThreshold(50)
@@ -54,10 +54,12 @@ V4L2Grabber::V4L2Grabber(const QString & device
 	, _deviceAutoDiscoverEnabled(false)
 
 {
-	//_imageResampler.setHorizontalPixelDecimation(pixelDecimation);
-	//_imageResampler.setVerticalPixelDecimation(pixelDecimation);
+	setPixelDecimation(pixelDecimation);
 
 	getV4Ldevices();
+
+	// init
+	setDeviceVideoStandard(device, videoStandard);
 }
 
 V4L2Grabber::~V4L2Grabber()
@@ -67,10 +69,11 @@ V4L2Grabber::~V4L2Grabber()
 
 void V4L2Grabber::uninit()
 {
-	Debug(_log,"uninit grabber: %s", QSTRING_CSTR(_deviceName));
 	// stop if the grabber was not stopped
 	if (_initialized)
 	{
+		Debug(_log,"uninit grabber: %s", QSTRING_CSTR(_deviceName));
+			
 		stop();
 		uninit_device();
 		close_device();
@@ -133,10 +136,14 @@ bool V4L2Grabber::init()
 		bool opened = false;
 		try
 		{
-			open_device();
-			opened = true;
-			init_device(_videoStandard, _input);
-			_initialized = true;
+			// do not init with unknown device
+			if(_deviceName != "unknown")
+			{
+				open_device();
+				opened = true;
+				init_device(_videoStandard, _input);
+				_initialized = true;
+			}
 		}
 		catch(std::exception& e)
 		{
@@ -529,6 +536,8 @@ void V4L2Grabber::init_device(VideoStandard videoStandard, int input)
 		break;
 	}
 
+// TODO Does never accept own sizes? use always _imageResampler instead
+/*
 	// calc the size based on pixelDecimation
 	fmt.fmt.pix.width = fmt.fmt.pix.width / _pixelDecimation;
 	fmt.fmt.pix.height = fmt.fmt.pix.height / _pixelDecimation;
@@ -550,7 +559,7 @@ void V4L2Grabber::init_device(VideoStandard videoStandard, int input)
 		throw_errno_exception("VIDIOC_G_FMT");
 		return;
 	}
-
+*/
 	// store width & height
 	_width = fmt.fmt.pix.width;
 	_height = fmt.fmt.pix.height;
@@ -698,9 +707,10 @@ void V4L2Grabber::stop_capturing()
 		break;
 	}
 }
-
+#include <QDebug>
 int V4L2Grabber::read_frame()
 {
+	qDebug()<<"read_frame time: "<<QDateTime::currentMSecsSinceEpoch();
 	bool rc = false;
 
 	try
@@ -934,20 +944,28 @@ void V4L2Grabber::setPixelDecimation(int pixelDecimation)
 	if(_pixelDecimation != pixelDecimation)
 	{
 		_pixelDecimation = pixelDecimation;
-		uninit();
-		// start if init is a success
-		if(init())
-			start();
+		_imageResampler.setHorizontalPixelDecimation(pixelDecimation);
+		_imageResampler.setVerticalPixelDecimation(pixelDecimation);
 	}
 }
 
-void V4L2Grabber::setInputVideoStandard(int input, VideoStandard videoStandard)
+void V4L2Grabber::setDeviceVideoStandard(QString device, VideoStandard videoStandard)
 {
-	if(_input != input || _videoStandard != videoStandard)
+	if(_deviceName != device || _videoStandard != videoStandard)
 	{
-		_input = input;
-		_videoStandard = videoStandard;
+		// extract input of device
+		QChar input = device.at(device.size() - 1);
+		if(input.isNumber())
+		{
+			// remove number
+			device.remove(device.size()-1,1);
+			_input = input.digitValue();
+		}
+
 		uninit();
+		_deviceName = device;
+
+		_videoStandard = videoStandard;
 		// start if init is a success
 		if(init())
 			start();

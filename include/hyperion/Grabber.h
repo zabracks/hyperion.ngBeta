@@ -67,9 +67,9 @@ public:
 	virtual void setSignalDetectionEnable(bool enable) {};
 
 	///
-	/// @brief Apply input and videoStanded (used from v4l)
+	/// @brief Apply device and videoStanded (used from v4l)
 	///
-	virtual void setInputVideoStandard(int input, VideoStandard videoStandard) {};
+	virtual void setDeviceVideoStandard(QString device, VideoStandard videoStandard) {};
 
 	///
 	/// @brief Apply display index (used from x11)

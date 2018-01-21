@@ -154,8 +154,8 @@ void GrabberWrapper::handleSettingsUpdate(const settings::type& type, const QJso
 				obj["redSignalThreshold"].toDouble(0.0)/100.0,
 				obj["greenSignalThreshold"].toDouble(0.0)/100.0,
 				obj["blueSignalThreshold"].toDouble(0.0)/100.0);
-			_ggrabber->setInputVideoStandard(
-				obj["input"].toInt(0),
+			_ggrabber->setDeviceVideoStandard(
+				obj["device"].toString("auto"),
 				parseVideoStandard(obj["standard"].toString("no-change")));
 
 		}

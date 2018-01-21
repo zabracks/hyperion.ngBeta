@@ -287,7 +287,6 @@ void HyperionDaemon::handleSettingsUpdate(const settings::type& type, const QJso
 			#ifdef ENABLE_V4L2
 			V4L2Wrapper* grabber = new V4L2Wrapper(
 				grabberConfig["device"].toString("auto"),
-				grabberConfig["input"].toInt(0),
 				parseVideoStandard(grabberConfig["standard"].toString("no-change")),
 				parsePixelFormat(grabberConfig["pixelFormat"].toString("no-change")),
 				grabberConfig["sizeDecimation"].toInt(8) );
@@ -313,10 +312,6 @@ void HyperionDaemon::handleSettingsUpdate(const settings::type& type, const QJso
 			connect(this, &HyperionDaemon::videoMode, grabber, &V4L2Wrapper::setVideoMode);
 			connect(this, &HyperionDaemon::settingsChanged, grabber, &V4L2Wrapper::handleSettingsUpdate);
 
-			if (grabber->start())
-			{
-				Info(_log, "V4L2 grabber started");
-			}
 			_v4l2Grabbers.push_back(grabber);
 			#endif
 		}
