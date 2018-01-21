@@ -30,11 +30,18 @@ DispmanxFrameGrabber::DispmanxFrameGrabber(const unsigned width, const unsigned 
 	int result = vc_dispmanx_display_get_info(_vc_display, &vc_info);
 	// Keep compiler happy in 'release' mode
 	(void)result;
-	assert(result == 0);
-	Info(_log, "Display opened with resolution: %dx%d", vc_info.width, vc_info.height);
 
 	// Close the displaye
 	vc_dispmanx_display_close(_vc_display);
+
+	if(result != 0)
+	{
+		Error(_log, "Failed to open display! Probably no permissions to access the capture interface");
+		setEnabled(false);
+		return;
+	}
+	else
+		Info(_log, "Display opened with resolution: %dx%d", vc_info.width, vc_info.height);
 
 	// init the resource and capture rectangle
 	setWidthHeight(width, height);
@@ -55,9 +62,9 @@ void DispmanxFrameGrabber::freeResources()
 	vc_dispmanx_resource_delete(_vc_resource);
 }
 
-void DispmanxFrameGrabber::setWidthHeight(int width, int height)
+bool DispmanxFrameGrabber::setWidthHeight(int width, int height)
 {
-	if(_width != width || _height != height)
+	if(Grabber::setWidthHeight(width, height))
 	{
 		if(_vc_resource != 0)
 			vc_dispmanx_resource_delete(_vc_resource);
@@ -73,10 +80,9 @@ void DispmanxFrameGrabber::setWidthHeight(int width, int height)
 
 		// Define the capture rectangle with the same size
 		vc_dispmanx_rect_set(&_rectangle, 0, 0, width, height);
-
-		_width = width;
-		_height = height;
+		return true;
 	}
+	return false;
 }
 
 void DispmanxFrameGrabber::setFlags(const int vc_flags)
