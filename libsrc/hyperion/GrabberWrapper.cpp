@@ -98,7 +98,7 @@ void GrabberWrapper::handleSettingsUpdate(const settings::type& type, const QJso
 		else
 			obj = config.object();
 
-		if(type == settings::SYSTEMCAPTURE)
+		if(type == settings::SYSTEMCAPTURE  && !_grabberName.startsWith("V4L"))
 		{
 			// width/height
 			_ggrabber->setWidthHeight(obj["width"].toInt(96), obj["height"].toInt(96));
@@ -131,7 +131,8 @@ void GrabberWrapper::handleSettingsUpdate(const settings::type& type, const QJso
 			}
 		}
 
-		if(type == settings::V4L2)
+		// v4l instances only!
+		if(type == settings::V4L2 && _grabberName.startsWith("V4L"))
 		{
 			// pixel decimation for v4l
 			_ggrabber->setPixelDecimation(obj["sizeDecimation"].toInt(8));

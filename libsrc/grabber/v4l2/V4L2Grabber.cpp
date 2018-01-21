@@ -933,8 +933,11 @@ void V4L2Grabber::setPixelDecimation(int pixelDecimation)
 {
 	if(_pixelDecimation != pixelDecimation)
 	{
+		_pixelDecimation = pixelDecimation;
 		uninit();
-		init();
+		// start if init is a success
+		if(init())
+			start();
 	}
 }
 
@@ -945,6 +948,8 @@ void V4L2Grabber::setInputVideoStandard(int input, VideoStandard videoStandard)
 		_input = input;
 		_videoStandard = videoStandard;
 		uninit();
-		init();
+		// start if init is a success
+		if(init())
+			start();
 	}
 }
