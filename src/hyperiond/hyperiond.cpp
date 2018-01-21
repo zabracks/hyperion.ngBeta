@@ -116,7 +116,7 @@ HyperionDaemon::HyperionDaemon(QString configFile, const QString rootPath, QObje
 	// init system capture (framegrabber)
 	handleSettingsUpdate(settings::SYSTEMCAPTURE, getSetting(settings::SYSTEMCAPTURE));
 	// init v4l2 capture
-	//handleSettingsUpdate(settings::V4L2, getSetting(settings::V4L2));
+	handleSettingsUpdate(settings::V4L2, getSetting(settings::V4L2));
 	// ---- network services -----
 	startNetworkServices();
 }
