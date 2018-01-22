@@ -548,9 +548,6 @@ void V4L2Grabber::init_device(VideoStandard videoStandard, int input)
 	fmt.fmt.pix.width = fmt.fmt.pix.width / _pixelDecimation;
 	fmt.fmt.pix.height = fmt.fmt.pix.height / _pixelDecimation;
 
-	// set the line length
-	_lineLength = fmt.fmt.pix.bytesperline;
-
 	// set the settings
 	if (-1 == xioctl(VIDIOC_S_FMT, &fmt))
 	{
@@ -566,6 +563,9 @@ void V4L2Grabber::init_device(VideoStandard videoStandard, int input)
 		return;
 	}
 */
+	// set the line length
+	_lineLength = fmt.fmt.pix.bytesperline;
+
 	// store width & height
 	_width = fmt.fmt.pix.width;
 	_height = fmt.fmt.pix.height;
@@ -965,12 +965,7 @@ void V4L2Grabber::setDeviceVideoStandard(QString device, VideoStandard videoStan
 	{
 		// extract input of device
 		QChar input = device.at(device.size() - 1);
-		if(input.isNumber())
-		{
-			// remove number
-			//device.remove(device.size()-1,1);
-			_input = input.digitValue();
-		}
+		_input = input.isNumber() ? input.digitValue() : -1;
 
 		uninit();
 		_deviceName = device;
