@@ -385,7 +385,7 @@
 	"edt_dev_enum_white_off" : "White off",
 	"edt_dev_general_heading_title" : "General Settings",
 	"edt_dev_general_name_title" : "Configuration name",
-	"edt_dev_general_ledCount_title" : "Count of all hardware LEDs",
+	"edt_dev_general_hardwareLedCount_title" : "Hardware LED count",
 	"edt_dev_general_colorOrder_title" : "RGB byte order",
 	"edt_dev_general_rewriteTime_title" : "Refresh time",
 	"edt_dev_spec_header_title" : "Specific Settings",

@@ -12,6 +12,7 @@
 	"device" :
 	{
 		"type"       : "file",
+		"hardwareLedCount" : 1,
 		"output"     : "/dev/null",
 		"rate"       : 1000000,
 		"colorOrder" : "rgb",

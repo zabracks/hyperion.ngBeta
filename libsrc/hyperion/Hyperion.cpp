@@ -129,8 +129,7 @@ Hyperion::Hyperion(HyperionDaemon* daemon, const quint8& instance, const QString
 	const QJsonObject color = getSetting(settings::COLOR).object();
 
 	// initialize leddevices
-	const QJsonObject ledDevice = getSetting(settings::DEVICE).object();
-	ledDevice["currentLedCount"] = int(_hwLedCount); // Inject led count info
+	QJsonObject ledDevice = getSetting(settings::DEVICE).object();
 
 	_device       = LedDeviceFactory::construct(ledDevice);
 	_deviceSmooth = new LinearColorSmoothing(_device, getSetting(settings::SMOOTHING), this);
@@ -266,7 +265,7 @@ void Hyperion::handleSettingsUpdate(const settings::type& type, const QJsonDocum
 	else if(type == settings::DEVICE)
 	{
 		_lockUpdate = true;
-		const QJsonObject dev = config.object();
+		QJsonObject dev = config.object();
 
 		// handle hwLedCount update
 		_hwLedCount = qMax(unsigned(dev["hardwareLedCount"].toInt(getLedCount())), getLedCount());
