@@ -968,7 +968,7 @@ void V4L2Grabber::setDeviceVideoStandard(QString device, VideoStandard videoStan
 		if(input.isNumber())
 		{
 			// remove number
-			device.remove(device.size()-1,1);
+			//device.remove(device.size()-1,1);
 			_input = input.digitValue();
 		}
 
