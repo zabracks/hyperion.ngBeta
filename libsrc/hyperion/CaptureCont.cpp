@@ -19,7 +19,7 @@ CaptureCont::CaptureCont(Hyperion* hyperion)
 	// inactive timer v4l
 	connect(_v4lInactiveTimer, &QTimer::timeout, this, &CaptureCont::setV4lInactive);
 	_v4lInactiveTimer->setSingleShot(true);
-	_v4lInactiveTimer->setInterval(3000);
+	_v4lInactiveTimer->setInterval(1000);
 
 	// init
 	handleSettingsUpdate(settings::INSTCAPTURE, _hyperion->getSetting(settings::INSTCAPTURE));
