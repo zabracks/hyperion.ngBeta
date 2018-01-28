@@ -8,6 +8,7 @@
 #include <QTcpSocket>
 #include <QtEndian>
 #include <QCryptographicHash>
+#include <QJsonObject>
 
 WebSocketClient::WebSocketClient(QtHttpRequest* request, QTcpSocket* sock, QObject* parent)
 	: QObject(parent)

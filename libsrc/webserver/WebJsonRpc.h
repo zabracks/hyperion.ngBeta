@@ -2,6 +2,8 @@
 
 #include <utils/Logger.h>
 
+#include <QJsonObject>
+
 class QtHttpServer;
 class QtHttpRequest;
 class QtHttpClientWrapper;

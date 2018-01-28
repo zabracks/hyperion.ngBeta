@@ -6,7 +6,6 @@
 #include <QJsonDocument>
 
 // hyperion / utils
-#include <hyperion/Hyperion.h>
 #include <utils/Logger.h>
 
 // settings
@@ -56,7 +55,6 @@ public slots:
 
 private:
 	Logger*              _log;
-	Hyperion*            _hyperion;
 	QString              _baseUrl;
 	quint16              _port;
 	StaticFileServing*   _staticFileServing;

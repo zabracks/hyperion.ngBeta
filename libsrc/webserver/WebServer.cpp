@@ -2,18 +2,19 @@
 #include "StaticFileServing.h"
 #include "QtHttpServer.h"
 
+#include <QFileInfo>
+#include <QJsonObject>
+
 // bonjour
 #include <bonjour/bonjourserviceregister.h>
 
 // netUtil
 #include <utils/NetUtils.h>
 
-#include <QFileInfo>
 
 WebServer::WebServer(const QJsonDocument& config, QObject * parent)
 	:  QObject(parent)
 	, _log(Logger::getInstance("WEBSERVER"))
-	, _hyperion(Hyperion::getInstance())
 	, _server(new QtHttpServer (this))
 {
 	_server->setServerName (QStringLiteral ("Hyperion Webserver"));
@@ -23,7 +24,7 @@ WebServer::WebServer(const QJsonDocument& config, QObject * parent)
 	connect (_server, &QtHttpServer::error,   this, &WebServer::onServerError);
 
 	// create StaticFileServing
-	_staticFileServing = new StaticFileServing (_hyperion, this);
+	_staticFileServing = new StaticFileServing (this);
 	connect(_server, &QtHttpServer::requestNeedsReply, _staticFileServing, &StaticFileServing::onRequestNeedsReply);
 
 	Debug(_log, "Instance created");

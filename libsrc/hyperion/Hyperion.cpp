@@ -630,7 +630,7 @@ void Hyperion::update()
 		// disable the black border detector for effects and ledmapping to 0
 		if(compChanged)
 		{
-			_imageProcessor->setBlackbarDetectDisable((_prevCompId == hyperion::COMP_EFFECT || _prevCompId == hyperion::COMP_GRABBER));
+			_imageProcessor->setBlackbarDetectDisable((_prevCompId == hyperion::COMP_EFFECT));
 			_imageProcessor->setHardLedMappingType((_prevCompId == hyperion::COMP_EFFECT) ? 0 : -1);
 		}
 		_imageProcessor->process(image, _ledBuffer);
