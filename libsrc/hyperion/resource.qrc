@@ -24,5 +24,6 @@
 		<file alias="schema-leds.json">schema/schema-leds.json</file>
 		<file alias="schema-instCapture.json">schema/schema-instCapture.json</file>
 		<file alias="schema-network.json">schema/schema-network.json</file>
+		<file alias="schema-flatbufServer.json">schema/schema-flatbufServer.json</file>
 	</qresource>
 </RCC>

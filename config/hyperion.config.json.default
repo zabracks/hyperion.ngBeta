@@ -177,6 +177,13 @@
 		"apiAuth" : false
 	},
 
+	"flatbufServer" :
+	{
+		"enable" : true,
+		"port" : 19400,
+		"timeout" : 5
+	},
+
 	"ledConfig" :
 	{
 		"top"	 	: 8,

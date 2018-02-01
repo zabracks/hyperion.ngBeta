@@ -29,6 +29,7 @@ enum type  {
 	WEBSERVER,
 	INSTCAPTURE,
 	NETWORK,
+	FLATBUFSERVER,
 	INVALID
 };
 
@@ -62,6 +63,7 @@ inline QString typeToString(const type& type)
 		case WEBSERVER:     return "webConfig";
 		case INSTCAPTURE:   return "instCapture";
 		case NETWORK:       return "network";
+		case FLATBUFSERVER: return "flatbufServer";
 		default:            return "invalid";
 	}
 }
@@ -94,6 +96,7 @@ inline type stringToType(const QString& type)
 	if (type == "webConfig")            return WEBSERVER;
 	if (type == "instCapture")          return INSTCAPTURE;
 	if (type == "network")              return NETWORK;
+	if (type == "flatbufServer")        return FLATBUFSERVER;
 
 	return INVALID;
 }

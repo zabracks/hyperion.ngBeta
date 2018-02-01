@@ -8,12 +8,14 @@
 #include <QNetworkInterface>
 #include <QNetworkConfigurationManager>
 
-SSDPHandler::SSDPHandler(QObject * parent, WebServer* webserver)
+SSDPHandler::SSDPHandler(QObject * parent, WebServer* webserver, const quint16& flatBufPort)
 	: SSDPServer(parent)
 	, _webserver(webserver)
 	, _localAddress()
 	, _NCA(new QNetworkConfigurationManager(this))
 {
+	_flatbufPort = flatBufPort;
+	setFlatBufPort(_flatbufPort);
 	// listen for mSearchRequestes
 	connect(this, &SSDPServer::msearchRequestReceived, this, &SSDPHandler::handleMSearchRequest);
 
@@ -29,6 +31,19 @@ SSDPHandler::SSDPHandler(QObject * parent, WebServer* webserver)
 	if(_webserver->isListening() && !_localAddress.isEmpty())
 	{
 		handleWebServerStateChange(true);
+	}
+}
+
+void SSDPHandler::handleSettingsUpdate(const settings::type& type, const QJsonDocument& config)
+{
+	if(type == settings::FLATBUFSERVER)
+	{
+		const QJsonObject& obj = config.object();
+		if(obj["port"].toInt() != _flatbufPort)
+		{
+			_flatbufPort = obj["port"].toInt();
+			setFlatBufPort(_flatbufPort);
+		}
 	}
 }
 

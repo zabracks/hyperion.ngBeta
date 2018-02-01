@@ -8,6 +8,9 @@
 #include "OsxWrapper.h"
 #include <commandline/Parser.h>
 
+// ssdp discover
+#include <ssdp/SSDPDiscover.h>
+
 using namespace commandline;
 
 // save the image as screenshot
@@ -25,7 +28,7 @@ int main(int argc, char ** argv)
 	try
 	{
 		// create the option parser and initialize all parameters
-		Parser parser("OSX capture application for Hyperion");
+		Parser parser("OSX capture application for Hyperion. Will automatically search a Hyperion server if -a option isn't used. Please note that if you have more than one server running it's more or less random which one will be used.");
 
 		Option        & argDisplay    = parser.add<Option>       ('d', "display",    "Set the display to capture [default: %1]");
 		IntOption     & argFps        = parser.add<IntOption>    ('f', "framerate",  "Capture frame rate [default: %1]", "10", 1, 600);
@@ -49,15 +52,33 @@ int main(int argc, char ** argv)
         OsxWrapper osxWrapper
             (parser.isSet(argDisplay), argWidth.getInt(parser), argHeight.getInt(parser), 1000 / argFps.getInt(parser));
 
-        if (parser.isSet(argScreenshot)) {
+        if (parser.isSet(argScreenshot))
+		{
             // Capture a single screenshot and finish
             const Image<ColorRgb> &screenshot = osxWrapper.getScreenshot();
             saveScreenshot("screenshot.png", screenshot);
         }
-        else {
+        else
+		{
+			// server searching by ssdp
+			QString address;
+			if(parser.isSet(argAddress))
+			{
+				address = argAddress.value(parser);
+			}
+			else
+			{
+				SSDPDiscover discover;
+				address = discover.getFirstService(STY_FLATBUFSERVER);
+				if(address.isEmpty())
+				{
+					address = argAddress.value(parser);
+				}
+			}
+
             // Create the Proto-connection with hyperiond
             ProtoConnectionWrapper protoWrapper
-                (argAddress.value(parser), argPriority.getInt(parser), 1000, parser.isSet(argSkipReply));
+                (address, argPriority.getInt(parser), 1000, parser.isSet(argSkipReply));
 
             // Connect the screen capturing to the proto processing
             QObject::connect(&osxWrapper,

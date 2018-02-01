@@ -7,7 +7,6 @@
 
 #include <QUdpSocket>
 #include <QDateTime>
-#include <QTimer>
 
 static const QHostAddress SSDP_ADDR("239.255.255.250");
 static const quint16      SSDP_PORT(1900);
@@ -26,6 +25,7 @@ static const QString UPNP_ALIVE_MESSAGE = "NOTIFY * HTTP/1.1\r\n"
                                           "NTS: ssdp:alive\r\n"
                                           "SERVER: %4\r\n"
                                           "USN: uuid:%5\r\n"
+										  "HYPERION-FBS-PORT: %6\r\n"
                                           "\r\n";
 
 // Implement ssdp:update as per spec 1.1, section 1.2.4
@@ -68,6 +68,7 @@ static const QString UPNP_MSEARCH_RESPONSE = "HTTP/1.1 200 OK\r\n"
                                              "SERVER: %4\r\n"
                                              "ST: %5\r\n"
                                              "USN: uuid:%6\r\n"
+											 "HYPERION-FBS-PORT: %7\r\n"
                                              "\r\n";
 
 SSDPServer::SSDPServer(QObject * parent)
@@ -75,7 +76,6 @@ SSDPServer::SSDPServer(QObject * parent)
 	, _log(Logger::getInstance("SSDP"))
 	, _udpSocket(new QUdpSocket(this))
 	, _running(false)
-	, _aliveTimer(new QTimer(this))
 {
 	// get system info
 	SysInfo::HyperionSysInfo data = SysInfo::get();
@@ -87,10 +87,6 @@ SSDPServer::SSDPServer(QObject * parent)
 	_uuid = Stats::getInstance()->getID();
 
 	connect(_udpSocket, &QUdpSocket::readyRead, this, &SSDPServer::readPendingDatagrams);
-
-	// setup to resend alive by the half time of SSDP_MAX_AGE
-	connect(_aliveTimer, &QTimer::timeout, this, &SSDPServer::handleAliveTimerTrigger);
-	_aliveTimer->setInterval((SSDP_MAX_AGE.toInt()/2)*1000);
 }
 
 SSDPServer::~SSDPServer()
@@ -103,7 +99,6 @@ const bool SSDPServer::start()
 	if(!_running && _udpSocket->bind(QHostAddress::AnyIPv4, SSDP_PORT, QAbstractSocket::ShareAddress))
 	{
 		_udpSocket->joinMulticastGroup(SSDP_ADDR);
-		_aliveTimer->start();
 		_running = true;
 		return true;
 	}
@@ -119,7 +114,6 @@ void SSDPServer::stop()
 		sendByeBye("urn:schemas-upnp-org:device:basic:1");
 		sendByeBye("urn:hyperion-project.org:device:basic:1");
 		_udpSocket->close();
-		_aliveTimer->stop();
 		_running = false;
 	}
 }
@@ -173,7 +167,8 @@ void SSDPServer::sendMSearchResponse(const QString& st, const QString& senderIp,
 		, _descAddress
 		, _serverHeader
 		, st
-		, _uuid );
+		, _uuid
+		, _fbsPort );
 
 	_udpSocket->writeDatagram(message.toUtf8(),
 								 QHostAddress(senderIp),
@@ -200,7 +195,8 @@ void SSDPServer::sendAlive(const QString& st)
 		, _descAddress
 		, st
 		, _serverHeader
-		, _uuid+"::"+st );
+		, _uuid+"::"+st
+		, _fbsPort);
 
 	// we repeat 3 times
 	quint8 rep = 0;
@@ -214,18 +210,11 @@ void SSDPServer::sendAlive(const QString& st)
 
 void SSDPServer::sendUpdate(const QString& st)
 {
-	QString message = UPNP_ALIVE_MESSAGE.arg(_descAddress
+	QString message = UPNP_UPDATE_MESSAGE.arg(_descAddress
 		, st
 		, _uuid+"::"+st );
 
 	_udpSocket->writeDatagram(message.toUtf8(),
 							 QHostAddress(SSDP_ADDR),
 							 SSDP_PORT);
-}
-
-void SSDPServer::handleAliveTimerTrigger()
-{
-	sendAlive("upnp:rootdevice");
-	sendAlive("urn:schemas-upnp-org:device:basic:1");
-	sendAlive("urn:hyperion-project.org:device:basic:1");
 }

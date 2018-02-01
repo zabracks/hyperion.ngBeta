@@ -7,11 +7,14 @@
 #include <hyperion/Hyperion.h>
 #include <utils/Components.h>
 
+// qt
+#include <QThread>
+
 // python utils/ global mainthread
 #include <python/PythonUtils.h>
 
 Plugin::Plugin(Plugins* plugins, Hyperion * hyperion, const PluginDefinition& def, const QString& id,  const QStringList& dPaths)
-	: QThread()
+	: QObject()
 	, _plugins(plugins)
 	, _hyperion(hyperion)
 	, _prioMuxer(hyperion->getMuxerInstance())
@@ -20,14 +23,32 @@ Plugin::Plugin(Plugins* plugins, Hyperion * hyperion, const PluginDefinition& de
 	, _dPaths(dPaths)
 	, _log(Logger::getInstance("PLUGIN"))
 {
-	// prio mixer signal
-	connect(_prioMuxer, &PriorityMuxer::visiblePriorityChanged, this, &Plugin::onVisiblePriorityChanged, Qt::QueuedConnection);
+
 }
 
 Plugin::~Plugin()
 {
 	// removes all Callbacks
 	callbackObjects.clear();
+}
+
+void Plugin::requestInterruption()
+{
+	_interrupt = true;
+}
+
+void Plugin::forceExit()
+{
+	Warning(_log, "Plugin with id '%s' didn't stopped the execution within 5 seconds, the stop will be forced now", QSTRING_CSTR(_id));
+	exit();
+}
+
+void Plugin::exit()
+{
+	// notify PLugins class to eval state and cleanup
+	emit finished();
+	// stop the thread
+	thread()->quit();
 }
 
 void Plugin::run()
@@ -123,7 +144,7 @@ void Plugin::run()
 		}
 
 		Py_BEGIN_ALLOW_THREADS;
-		msleep(100);
+		this->thread()->msleep(100);
 		Py_END_ALLOW_THREADS;
 
 		s = _state->interp->tstate_head;
@@ -131,6 +152,8 @@ void Plugin::run()
 
 	Py_EndInterpreter(_state);
 	PyEval_ReleaseLock();
+
+	exit();
 }
 
 void Plugin::handlePyPath(void)
@@ -373,7 +396,7 @@ int Plugin::setVisiblePriority(const int& priority)
 	return _hyperion->setCurrentSourcePriority(priority);
 }
 
-void Plugin::handlePluginAction(PluginAction action, QString id, bool success, PluginDefinition def)
+void Plugin::onPluginAction(PluginAction action, QString id, bool success, PluginDefinition def)
 {
 	// callback for saved actions
 	if(action == P_SAVED && success && id == _id)

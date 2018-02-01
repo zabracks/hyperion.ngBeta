@@ -59,6 +59,7 @@ class AuthManager;
 class NetOrigin;
 class PythonInit;
 class SSDPHandler;
+class FlatBufferServer;
 
 class HyperionDaemon : public QObject
 {
@@ -149,6 +150,8 @@ private:
 	Hyperion*              _hyperion;
 	Stats*                 _stats;
 	SSDPHandler*           _ssdp;
+
+	FlatBufferServer* _flatBufferServer;
 
 	unsigned            _grabber_width;
 	unsigned            _grabber_height;

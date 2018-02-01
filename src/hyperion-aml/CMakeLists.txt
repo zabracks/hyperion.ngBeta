@@ -30,6 +30,7 @@ target_link_libraries(${PROJECT_NAME}
 	protoclient
 	amlogic-grabber
 	framebuffer-grabber
+	ssdp
 	Qt5::Core
 	Qt5::Gui
 	Qt5::Network

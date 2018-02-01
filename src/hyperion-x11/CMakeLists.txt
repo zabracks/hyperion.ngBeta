@@ -31,6 +31,7 @@ target_link_libraries(${PROJECT_NAME}
 	hyperion-utils
 	protoclient
 	x11-grabber
+	ssdp
 	${X11_LIBRARIES}
 	${X11_Xrender_LIB}
 	Qt5::Core

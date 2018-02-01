@@ -3,7 +3,7 @@
 	"required" : true,
 	"title" : "edt_conf_v4l2_heading_title",
 	"minItems": 1,
-	"maxItems": 2,
+	"maxItems": 1,
 	"items":
 	{
 		"type" : "object",

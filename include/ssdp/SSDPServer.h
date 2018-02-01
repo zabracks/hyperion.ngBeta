@@ -3,7 +3,6 @@
 #include <utils/Logger.h>
 
 class QUdpSocket;
-class QTimer;
 
 ///
 /// @brief The SSDP Server sends and receives (parses) SSDP requests
@@ -57,12 +56,16 @@ public:
 	///
 	void sendUpdate(const QString& st);
 
-
 	///
 	/// @brief Overwrite description address
 	/// @param addr  new address
 	///
 	void setDescriptionAddress(const QString& addr) { _descAddress = addr; };
+
+	///
+	/// @brief set new flatbuffer server port
+	///
+	void setFlatBufPort(const quint16& port) { _fbsPort = QString::number(port); };
 
 signals:
 	///
@@ -74,21 +77,15 @@ signals:
 	///
 	void msearchRequestReceived(const QString& target, const QString& mx, const QString address, const quint16 & port);
 
-private slots:
-	///
-	/// @brief Handle the emits from _aliveTimer
-	///
-	void handleAliveTimerTrigger();
-
 private:
 	Logger* _log;
 	QUdpSocket* _udpSocket;
 
 	QString _serverHeader;
 	QString _uuid;
+	QString _fbsPort;
 	QString _descAddress;
 	bool    _running;
-	QTimer* _aliveTimer;
 
 private slots:
 	void readPendingDatagrams();

@@ -30,7 +30,7 @@ void HTTPUtils::readReply(QNetworkReply* reply)
 	// no check for endless redirect loops, if url is not empty we got a redirect
 	if(!possibleRedirectUrl.isEmpty())
 	{
-		Debug(_log,"Redirect to url %s",QSTRING_CSTR(possibleRedirectUrl));
+		//Debug(_log,"Redirect to url %s",QSTRING_CSTR(possibleRedirectUrl));
 		sendGet(possibleRedirectUrl, id);
 		return;
 	}

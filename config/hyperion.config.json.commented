@@ -306,6 +306,13 @@
 		"apiAuth" : true
 	},
 
+	"flatbufServer" :
+	{
+		"enable" : true,
+		"port" : 19400,
+		"timeout" : 5
+	},
+
 	/// Recreate and save led layouts made with web config. These values are just helpers for ui, not for Hyperion.
 	"ledConfig" :
 	{

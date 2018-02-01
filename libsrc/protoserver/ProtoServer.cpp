@@ -3,10 +3,9 @@
 
 // qt incl
 #include <QTcpServer>
+#include <QJsonObject>
 
 // project includes
-#include <hyperion/Hyperion.h>
-#include <hyperion/MessageForwarder.h>
 #include <protoserver/ProtoServer.h>
 #include "protoserver/ProtoConnection.h"
 #include "ProtoClientConnection.h"
@@ -16,31 +15,14 @@
 
 ProtoServer::ProtoServer(const QJsonDocument& config)
 	: QObject()
-	, _hyperion(Hyperion::getInstance())
 	, _server(new QTcpServer(this))
 	, _openConnections()
 	, _log(Logger::getInstance("PROTOSERVER"))
-	, _componentRegister( & _hyperion->getComponentRegister())
 	, _netOrigin(NetOrigin::getInstance())
 {
 	Debug(_log,"Instance created");
 	connect( _server, SIGNAL(newConnection()), this, SLOT(newConnection()));
 	handleSettingsUpdate(settings::PROTOSERVER, config);
-
-	QStringList slaves = _hyperion->getForwarder()->getProtoSlaves();
-
-	for (const auto& entry : slaves)
-	{
-		ProtoConnection* p = new ProtoConnection(entry.toLocal8Bit().constData());
-		p->setSkipReply(true);
-		_proxy_connections << p;
-	}
-
-	// listen for component changes
-	connect(_componentRegister, &ComponentRegister::updatedComponentState, this, &ProtoServer::componentStateChanged);
-
-	// get inital forwarder state
-	componentStateChanged(hyperion::COMP_FORWARDER, _componentRegister->isComponentEnabled(hyperion::COMP_FORWARDER));
 }
 
 ProtoServer::~ProtoServer()
@@ -48,9 +30,6 @@ ProtoServer::~ProtoServer()
 	foreach (ProtoClientConnection * connection, _openConnections) {
 		delete connection;
 	}
-
-	while (!_proxy_connections.isEmpty())
-		delete _proxy_connections.takeFirst();
 }
 
 void ProtoServer::start()
@@ -120,39 +99,13 @@ void ProtoServer::newConnection()
 
 				// register slot for cleaning up after the connection closed
 				connect(connection, SIGNAL(connectionClosed(ProtoClientConnection*)), this, SLOT(closedConnection(ProtoClientConnection*)));
-				connect(connection, SIGNAL(newMessage(const proto::HyperionRequest*)), this, SLOT(newMessage(const proto::HyperionRequest*)));
-
-				// register forward signal for video mode
-				connect(this, SIGNAL(videoMode(VideoMode)), connection, SLOT(setVideoMode(VideoMode)));
+				//connect(connection, SIGNAL(newMessage(const proto::HyperionRequest*)), this, SLOT(newMessage(const proto::HyperionRequest*)));
 			}
 			else
 			{
 				socket->close();
 			}
 		}
-	}
-}
-
-void ProtoServer::newMessage(const proto::HyperionRequest * message)
-{
-	for (int i = 0; i < _proxy_connections.size(); ++i)
-		_proxy_connections.at(i)->sendMessage(*message);
-}
-
-void ProtoServer::sendImageToProtoSlaves(int priority, const Image<ColorRgb> & image, int duration_ms)
-{
-	if ( _forwarder_enabled )
-	{
-		for (int i = 0; i < _proxy_connections.size(); ++i)
-			_proxy_connections.at(i)->setImage(image, priority, duration_ms);
-	}
-}
-
-void ProtoServer::componentStateChanged(const hyperion::Components component, bool enable)
-{
-	if (component == hyperion::COMP_FORWARDER)
-	{
-		_forwarder_enabled = enable;
 	}
 }
 

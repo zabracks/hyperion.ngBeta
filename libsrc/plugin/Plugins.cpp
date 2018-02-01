@@ -3,18 +3,26 @@
 #include "Plugin.h"
 #include <db/PluginTable.h>
 
+// qt
+#include <QThread>
+
+// cb thread
+#include "CallbackThread.h"
+
+// hyp
+#include <hyperion/PriorityMuxer.h>
+
 Plugins::Plugins(Hyperion* hyperion, const quint8& instance)
 	: QObject()
 	, _log(Logger::getInstance("PLUGINS"))
 	, _hyperion(hyperion)
+	, _prioMuxer(hyperion->getMuxerInstance())
 	, _PDB(new PluginTable(instance))
 	, _files(_hyperion->getRootPath(), _PDB)
 {
-	// register metyTypes for QueuedConnection
+	// more meta register
 	qRegisterMetaType<PluginAction>("PluginAction");
 	qRegisterMetaType<PluginDefinition>("PluginDefinition");
-	qRegisterMetaType<hyperion::Components>("hyperion::Components");
-
 	// from files
 	connect(&_files, &Files::pluginAction, this, &Plugins::doPluginAction);
 	// to files
@@ -27,7 +35,14 @@ Plugins::Plugins(Hyperion* hyperion, const quint8& instance)
 Plugins::~Plugins()
 {
 	foreach (Plugin* plug, _runningPlugins)
-	    plug->requestInterruption();
+	{
+		QThread* thread = plug->thread();
+		plug->requestInterruption();
+		// block until thread exit, if timeout is reached force the quit
+		if(!thread->wait(5000))
+			plug->forceExit();
+
+	}
 	delete _PDB;
 }
 
@@ -172,20 +187,43 @@ void Plugins::start(QString id)
 	Plugin* newPlugin = new Plugin(this, _hyperion, def, id, dPaths);
 	_runningPlugins.insert(id, newPlugin);
 
-	// notify
+	QThread* pluginThread = new QThread(this);
+	newPlugin->moveToThread(pluginThread);
+
+	// plugin thread signals and plugin finished signal
+	connect( pluginThread, &QThread::started, newPlugin, &Plugin::run );
+	connect( newPlugin, &Plugin::finished, this, &Plugins::pluginFinished );
+	connect( pluginThread, &QThread::finished, pluginThread, &QObject::deleteLater );
+
+	// setup callback instance + thread
+	CallbackThread* callbackThread = new CallbackThread();
+	QThread* thread = new QThread(this);
+
+	callbackThread->moveToThread(thread);
+
+	connect( thread, &QThread::finished, callbackThread, &QObject::deleteLater );
+	connect( thread, &QThread::finished, thread, &QObject::deleteLater );
+	// make sure the callback thread + callback instance quits with the plugin thread + plugin instance, DirectConnection required, as we wan't a blocking quit (see Plugins destructor)
+	connect( newPlugin, &Plugin::finished, thread, &QThread::quit, Qt::DirectConnection);
+
+	// feed callback with signals
+	connect(this, &Plugins::pluginAction, callbackThread, &CallbackThread::handlePluginAction);
+	connect(_hyperion, &Hyperion::componentStateChanged, callbackThread, &CallbackThread::handleCompStateChanged);
+	connect(_prioMuxer, &PriorityMuxer::visiblePriorityChanged, callbackThread, &CallbackThread::handleVisiblePriorityChanged);
+
+	thread->start();
+
+	// feed plugin with callbacks
+	connect(callbackThread, &CallbackThread::onPluginAction, newPlugin, &Plugin::onPluginAction, Qt::DirectConnection);
+	connect(callbackThread, &CallbackThread::onCompStateChanged, newPlugin, &Plugin::onCompStateChanged, Qt::DirectConnection);
+	connect(callbackThread, &CallbackThread::onVisiblePriorityChanged, newPlugin, &Plugin::onVisiblePriorityChanged, Qt::DirectConnection);
+
+	// notify start
 	emit pluginAction(P_STARTED, id, true);
 	Info(_log, "Plugin with id '%s' started",QSTRING_CSTR(id));
 
-	// listen for plugin thread exit
-	connect(newPlugin, &QThread::finished, this, &Plugins::pluginFinished);
-	// listen for pluginActions
-	connect(this, &Plugins::pluginAction, newPlugin, &Plugin::handlePluginAction, Qt::QueuedConnection);
-
-	// listen for componentStateChanged
-	connect(_hyperion, SIGNAL(componentStateChanged(hyperion::Components,bool)), newPlugin, SLOT(onCompStateChanged(hyperion::Components,bool)), Qt::QueuedConnection);
-
-	// start
-	newPlugin->start();
+	// thread start
+	pluginThread->start();
 }
 
 bool Plugins::stop(const QString& id, const bool& remove) const
@@ -202,7 +240,6 @@ bool Plugins::stop(const QString& id, const bool& remove) const
 			plugin->setRemoveFlag();
 
 		plugin->requestInterruption();
-		plugin->wait();
 		return true;
 	}
 	return false;

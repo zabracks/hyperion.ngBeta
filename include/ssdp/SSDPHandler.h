@@ -4,6 +4,9 @@
 
 #include <QNetworkConfiguration>
 
+// utils
+#include <utils/settings.h>
+
 class WebServer;
 class QNetworkConfigurationManager;
 
@@ -16,13 +19,20 @@ class QNetworkConfigurationManager;
 class SSDPHandler : public SSDPServer{
 	Q_OBJECT
 public:
-	SSDPHandler(QObject * parent, WebServer* webserver);
+	SSDPHandler(QObject * parent, WebServer* webserver, const quint16& flatBufPort);
 
 public slots:
 	///
 	/// @brief get state changes from webserver
 	///
 	void handleWebServerStateChange(const bool newState);
+
+	///
+	/// @brief Handle settings update from Hyperion Settingsmanager emit
+	/// @param type   settingyType from enum
+	/// @param config configuration object
+	///
+	void handleSettingsUpdate(const settings::type& type, const QJsonDocument& config);
 
 private:
 	///
@@ -62,4 +72,5 @@ private:
 	WebServer* _webserver;
 	QString    _localAddress;
 	QNetworkConfigurationManager* _NCA;
+	quint16 _flatbufPort;
 };

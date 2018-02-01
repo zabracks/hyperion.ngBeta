@@ -14,6 +14,7 @@
 #include <QPair>
 #include <cstdint>
 #include <limits>
+#include <QThread>
 
 #include <utils/Components.h>
 #include <utils/JsonUtils.h>
@@ -26,6 +27,9 @@
 #include <utils/Stats.h>
 #include <HyperionConfig.h> // Required to determine the cmake options
 #include "hyperiond.h"
+
+// FlatBufferServer
+#include <flatbufserver/FlatBufferServer.h>
 
 // bonjour browser
 #include <bonjour/bonjourbrowserwrapper.h>
@@ -71,8 +75,10 @@ HyperionDaemon::HyperionDaemon(QString configFile, const QString rootPath, QObje
 {
 	HyperionDaemon::daemon = this;
 
-	// Image<ColorRgb>
+	// Register metas for thread queued connection
 	qRegisterMetaType<Image<ColorRgb>>("Image<ColorRgb>");
+	qRegisterMetaType<hyperion::Components>("hyperion::Components");
+	qRegisterMetaType<settings::type>("settings::type");
 
 	// init settings
 	_settingsManager = new SettingsManager(0,configFile);
@@ -92,6 +98,7 @@ HyperionDaemon::HyperionDaemon(QString configFile, const QString rootPath, QObje
 	// Create Stats
 	_stats = new Stats(_settingsManager->getSettings());
 
+	// spawn all Hyperion instances before network services
 	_hyperion = Hyperion::initInstance(this, 0, configFile, rootPath);
 
 	Info(_log, "Hyperion initialized");
@@ -155,6 +162,8 @@ void HyperionDaemon::freeObjects()
 	delete _webserver;
 	delete _jsonServer;
 	delete _protoServer;
+	_flatBufferServer->thread()->quit();
+	_flatBufferServer->thread()->wait(1000);
 	delete _udpListener;
 
 	delete _bonjourBrowserWrapper;
@@ -190,7 +199,17 @@ void HyperionDaemon::startNetworkServices()
 	// Create Proto server
 	_protoServer = new ProtoServer(getSetting(settings::PROTOSERVER));
 	connect(this, &HyperionDaemon::settingsChanged, _protoServer, &ProtoServer::handleSettingsUpdate);
-	//QObject::connect(_hyperion, SIGNAL(videoMode(VideoMode)), _protoServer, SLOT(setVideoMode(VideoMode)));
+
+	// Create FlatBuffer server & move to Thread
+	_flatBufferServer = new FlatBufferServer(getSetting(settings::FLATBUFSERVER));
+	connect(this, &HyperionDaemon::settingsChanged, _flatBufferServer, &FlatBufferServer::handleSettingsUpdate);
+	QThread* fbThread = new QThread(this);
+
+	_flatBufferServer->moveToThread(fbThread);
+	connect( fbThread, &QThread::started, _flatBufferServer, &FlatBufferServer::initServer );
+	connect( fbThread, &QThread::finished, _flatBufferServer, &QObject::deleteLater );
+	connect( fbThread, &QThread::finished, fbThread, &QObject::deleteLater );
+	fbThread->start();
 
 	// Create UDP listener
 	_udpListener = new UDPListener(getSetting(settings::UDPLISTENER));
@@ -201,8 +220,10 @@ void HyperionDaemon::startNetworkServices()
 	connect(this, &HyperionDaemon::settingsChanged, _webserver, &WebServer::handleSettingsUpdate);
 
 	// create SSDPHandler (after webserver), connect webserver state switches
-	_ssdp = new SSDPHandler(this, _webserver);
+	// TODO replace proto config with flatbuf config
+	_ssdp = new SSDPHandler(this, _webserver, getSetting(settings::PROTOSERVER).object()["port"].toInt());
 	connect(_webserver, &WebServer::stateChange, _ssdp, &SSDPHandler::handleWebServerStateChange);
+	connect(this, &HyperionDaemon::settingsChanged, _ssdp, &SSDPHandler::handleSettingsUpdate);
 }
 
 void HyperionDaemon::handleSettingsUpdate(const settings::type& type, const QJsonDocument& config)

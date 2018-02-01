@@ -29,6 +29,7 @@ target_link_libraries( ${PROJECT_NAME}
 	hyperion-utils
 	protoclient
 	osx-grabber
+	ssdp
 	Qt5::Core
 	Qt5::Gui
 	Qt5::Network

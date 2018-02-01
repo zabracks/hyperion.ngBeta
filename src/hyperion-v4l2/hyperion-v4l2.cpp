@@ -22,6 +22,9 @@
 #include "HyperionConfig.h"
 #include <commandline/Parser.h>
 
+// ssdp discover
+#include <ssdp/SSDPDiscover.h>
+
 using namespace commandline;
 
 // save the image as screenshot
@@ -54,7 +57,7 @@ int main(int argc, char** argv)
 	try
 	{
 		// create the option parser and initialize all parameters
-		Parser parser("V4L capture application for Hyperion");
+		Parser parser("V4L capture application for Hyperion.  Will automatically search a Hyperion server if -a option isn't used. Please note that if you have more than one server running it's more or less random which one will be used.");
 
 		Option             & argDevice              = parser.add<Option>       ('d', "device", "The device to use, can be /dev/video0 [default: %1 (auto detected)]", "auto");
 		SwitchOption<VideoStandard> & argVideoStandard= parser.add<SwitchOption<VideoStandard>>('v', "video-standard", "The used video standard. Valid values are PAL, NTSC, SECAM or no-change. [default: %1]", "no-change");
@@ -188,7 +191,22 @@ int main(int argc, char** argv)
 		}
 		else
 		{
-			ProtoConnectionWrapper protoWrapper(argAddress.value(parser), argPriority.getInt(parser), 1000, parser.isSet(argSkipReply));
+			// server searching by ssdp
+			QString address;
+			if(parser.isSet(argAddress))
+			{
+				address = argAddress.value(parser);
+			}
+			else
+			{
+				SSDPDiscover discover;
+				address = discover.getFirstService(STY_FLATBUFSERVER);
+				if(address.isEmpty())
+				{
+					address = argAddress.value(parser);
+				}
+			}
+			ProtoConnectionWrapper protoWrapper(address, argPriority.getInt(parser), 1000, parser.isSet(argSkipReply));
 			QObject::connect(&grabber, SIGNAL(newFrame(Image<ColorRgb>)), &protoWrapper, SLOT(receiveImage(Image<ColorRgb>)));
 			if (grabber.start())
 				QCoreApplication::exec();

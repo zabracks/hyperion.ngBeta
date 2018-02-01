@@ -13,13 +13,16 @@
 #include <hyperion/PriorityMuxer.h>
 
 // qt incl
-#include <QThread>
 #include <QStringList>
 
 class Hyperion;
 class Plugins;
 
-class Plugin : public QThread
+///
+/// @brief Each plugin spawns a instance of this class, moved to another Thread by Plugins which starts execution with run()
+///
+
+class Plugin : public QObject
 {
 	Q_OBJECT
 
@@ -28,8 +31,24 @@ public:
 	Plugin(Plugins* plugins, Hyperion* hyperion, const PluginDefinition& def, const QString& id, const QStringList& dPaths);
 	virtual ~Plugin();
 
-	// QThread inherited run method
-	virtual void run();
+	// init the execution
+	void run();
+
+	///
+	/// @brief Request plugin stop
+	///
+	void requestInterruption();
+
+	///
+	/// @brief Get the current interruption state
+	/// @return True when interrupt was requested else false
+	///
+	const bool isInterruptionRequested() { return _interrupt; };
+
+	///
+	/// Force the exit of this instance along with the thread
+	///
+	void forceExit();
 
 	/// get plugin id
 	const QString getId(){ return _id; };
@@ -62,6 +81,8 @@ private:
 	bool _error = false;
 	/// true if plugin should be removed after stop
 	bool _remove = false;
+	/// true when interrupt requested
+	bool _interrupt = false;
 
 	// add a python path to _pythonPath
 	void addNativePath(const std::string& path);
@@ -73,6 +94,15 @@ private:
 	void printException(void);
 
 	FILE* PyFile_AsFileWithMode(PyObject *py_file, const char *mode);
+
+	/// Exit this thread with class
+	void exit();
+
+signals:
+	///
+	/// @brief Emits when the plugin instance ends to evaluate last state in Plugins class
+	///
+	void finished();
 
 public:
 	/// Map of all callback PyObjects that has been requested by this instance
@@ -135,7 +165,7 @@ public:
 
 	///
 	/// @brief Get all priorities in PriorityMuxer
-	/// @return prios 
+	/// @return prios
 	///
 	QList<int> getAllPriorities() const;
 
@@ -157,13 +187,14 @@ public slots:
 	/// CALLBACK SLOTS
 	///
 
+	///
 	/// @brief called whenever a plugin action is ongoing
 	/// @param action   action from enum
 	/// @param id       plugin id
 	/// @param def      PluginDefinition (optional)
 	/// @param success  true if action was a success, else false
 	///
-	void handlePluginAction(PluginAction action, QString id, bool success = true, PluginDefinition def = PluginDefinition());
+	void onPluginAction(PluginAction action, QString id, bool success = true, PluginDefinition def = PluginDefinition());
 
 	///
 	/// @brief called when a component state is changed

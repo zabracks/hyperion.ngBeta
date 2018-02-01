@@ -12,7 +12,11 @@
 
 class Plugin;
 class PluginTable;
+class PriorityMuxer;
 
+///
+/// @brief Manages everything related to Plugins
+///
 class Plugins : public QObject
 {
 	Q_OBJECT
@@ -48,6 +52,9 @@ private:
 	Logger* _log;
 	/// Hyperion instance
 	Hyperion* _hyperion;
+
+	/// PrioMuxer
+	PriorityMuxer* _prioMuxer;
 
 	/// database wrapper
 	PluginTable* _PDB;
