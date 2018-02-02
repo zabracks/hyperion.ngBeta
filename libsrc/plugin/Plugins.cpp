@@ -203,7 +203,7 @@ void Plugins::start(QString id)
 
 	connect( thread, &QThread::finished, callbackThread, &QObject::deleteLater );
 	connect( thread, &QThread::finished, thread, &QObject::deleteLater );
-	// make sure the callback thread + callback instance quits with the plugin thread + plugin instance, DirectConnection required, as we wan't a blocking quit (see Plugins destructor)
+	// make sure the callback thread + callback instance quits with the plugin thread + plugin instance, DirectConnection required, as we wan't a fast quit (see Plugins destructor)
 	connect( newPlugin, &Plugin::finished, thread, &QThread::quit, Qt::DirectConnection);
 
 	// feed callback with signals

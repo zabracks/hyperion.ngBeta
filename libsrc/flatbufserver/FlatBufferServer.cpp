@@ -9,10 +9,6 @@
 #include <QTcpServer>
 #include <QTcpSocket>
 
-
-#include <QDebug>
-
-
 FlatBufferServer::FlatBufferServer(const QJsonDocument& config, QObject* parent)
 	: QObject(parent)
 	, _server(new QTcpServer(this))
@@ -32,7 +28,6 @@ FlatBufferServer::~FlatBufferServer()
 void FlatBufferServer::initServer()
 {
 	_netOrigin = NetOrigin::getInstance();
-	qDebug()<<"Thread in InitServer is"<<this->thread();
 	connect(_server, &QTcpServer::newConnection, this, &FlatBufferServer::newConnection);
 
 	// apply config
@@ -41,7 +36,6 @@ void FlatBufferServer::initServer()
 
 void FlatBufferServer::handleSettingsUpdate(const settings::type& type, const QJsonDocument& config)
 {
-	qDebug()<<"Thread in handleSettingsUpdate is"<<this->thread();
 	if(type == settings::FLATBUFSERVER)
 	{
 		const QJsonObject& obj = config.object();
@@ -64,7 +58,6 @@ void FlatBufferServer::handleSettingsUpdate(const settings::type& type, const QJ
 
 void FlatBufferServer::newConnection()
 {
-	qDebug()<<"Thread in newConnection is"<<this->thread();
 	while(_server->hasPendingConnections())
 	{
 		if(QTcpSocket* socket = _server->nextPendingConnection())

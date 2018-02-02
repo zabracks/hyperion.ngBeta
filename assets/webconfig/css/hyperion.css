@@ -68,6 +68,11 @@ body{
 table.input-group{width:100%}
 @media (max-width: 767px) {.ltd{white-space:normal;}}
 
+/*editor for plugins*/
+[id^=plugin_modal] h3{margin-top:10px;}
+[id^=plugin_modal] .well{margin-bottom:9px;border:none;background-color:white;box-shadow:none;}
+[id^=plugin_modal] label{padding-left:0px !important; padding-right:0px !important;}
+
 /*icon spacing*/
 .fa-fw{margin-right:5px;}
 
