@@ -53,6 +53,9 @@ void Plugin::exit()
 
 void Plugin::run()
 {
+	// we probably need to wait until mainThreadState is available
+	while(mainThreadState == nullptr){};
+
 	// gil lock
 	PyEval_RestoreThread(mainThreadState);
 	// Initialize a new  sub-interpreter

@@ -24,8 +24,6 @@ UDPListener::UDPListener(const QJsonDocument& config) :
 	_listenPort(0),
 	_netOrigin(NetOrigin::getInstance())
 {
-	Debug(_log, "Instance created");
-
 	// init
 	handleSettingsUpdate(settings::UDPLISTENER, config);
 }

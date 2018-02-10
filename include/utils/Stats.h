@@ -24,7 +24,7 @@ public:
 
 private:
 	friend class HyperionDaemon;
-	Stats(const QJsonObject& config);
+	Stats(const QJsonObject& config, QObject* parent = nullptr);
 	~Stats();
 
 private:

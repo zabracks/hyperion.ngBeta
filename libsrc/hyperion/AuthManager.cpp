@@ -9,9 +9,9 @@
 
 AuthManager* AuthManager::manager = nullptr;
 
-AuthManager::AuthManager(const QString& rootPath, QObject* parent)
+AuthManager::AuthManager(QObject* parent)
 	: QObject(parent)
-	, _authTable(new AuthTable(rootPath))
+	, _authTable(new AuthTable(this))
 	, _pendingRequests()
 	, _authRequired(true)
 	, _timer(new QTimer(this))
@@ -29,14 +29,14 @@ AuthManager::AuthManager(const QString& rootPath, QObject* parent)
 	}
 }
 
-AuthManager::~AuthManager()
-{
-	delete _authTable;
-}
-
 const bool & AuthManager::isAuthRequired()
 {
 	return _authRequired;
+}
+
+const bool & AuthManager::isLocalAuthRequired()
+{
+	return _localAuthRequired;
 }
 
 const AuthManager::AuthDefinition AuthManager::createToken(const QString& comment)
@@ -138,6 +138,7 @@ void AuthManager::handleSettingsUpdate(const settings::type& type, const QJsonDo
 	{
 		const QJsonObject& obj = config.object();
 		_authRequired = obj["apiAuth"].toBool(true);
+		_localAuthRequired = obj["localApiAuth"].toBool(false);
 	}
 }
 

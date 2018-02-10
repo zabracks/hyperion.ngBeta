@@ -15,8 +15,9 @@ class PluginTable : public DBManager
 
 public:
 	/// construct wrapper with plugins table and columns
-	PluginTable(const quint8& id)
-	: _hyID(id)
+	PluginTable(const quint8& id, QObject* parent = nullptr)
+	: DBManager(parent)
+	, _hyID(id)
 	{
 		setTable("plugins");
 
@@ -166,6 +167,16 @@ public:
 		VectorPair cond;
 		cond.append(CPair("id",id));
 		return deleteRecord(cond);
+	}
+
+	///
+	/// @brief Delete all plugin entries associated with this instance, called from InstanceTable of HyperionIManager
+	///
+	inline void deleteInstance() const
+	{
+		VectorPair cond;
+		cond.append(CPair("hyperion_inst",_hyID));
+		deleteRecord(cond);
 	}
 private:
 	// Hyperion instance

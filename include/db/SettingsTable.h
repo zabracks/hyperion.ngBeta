@@ -15,8 +15,9 @@ class SettingsTable : public DBManager
 
 public:
 	/// construct wrapper with settings table
-	SettingsTable(const quint8& instance = 0)
-		: _hyperion_inst(instance)
+	SettingsTable(const quint8& instance, QObject* parent = nullptr)
+		: DBManager(parent)
+		, _hyperion_inst(instance)
 	{
 		setTable("settings");
 		// create table columns
@@ -92,6 +93,16 @@ public:
 			cond.append(CPair("AND hyperion_inst",_hyperion_inst));
 		getRecord(cond, results, QStringList("config"));
 		return results["config"].toString();
+	}
+
+	///
+	/// @brief Delete all settings entries associated with this instance, called from InstanceTable of HyperionIManager
+	///
+	inline void deleteInstance() const
+	{
+		VectorPair cond;
+		cond.append(CPair("hyperion_inst",_hyperion_inst));
+		deleteRecord(cond);
 	}
 
 	inline bool isSettingGlobal(const QString& type) const

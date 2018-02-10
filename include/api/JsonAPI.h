@@ -15,6 +15,9 @@
 // plugin
 #include <plugin/PluginDefinition.h>
 
+// HyperionInstanceManager
+#include <hyperion/HyperionIManager.h>
+
 // createEffect helper
 struct find_schema: std::unary_function<EffectSchema, bool>
 {
@@ -39,6 +42,7 @@ struct find_effect: std::unary_function<EffectDefinition, bool>
 
 class JsonCB;
 class AuthManager;
+class HyperionIManager;
 
 class JsonAPI : public QObject
 {
@@ -51,9 +55,10 @@ public:
 	/// @param peerAddress provide the Address of the peer
 	/// @param log         The Logger class of the creator
 	/// @param parent      Parent QObject
+	/// @param localConnection True when the sender has origin home network
 	/// @param noListener  if true, this instance won't listen for hyperion push events
 	///
-	JsonAPI(QString peerAddress, Logger* log, QObject* parent, bool noListener = false);
+	JsonAPI(QString peerAddress, Logger* log, const bool& localConnection, QObject* parent, bool noListener = false);
 
 	///
 	/// Handle an incoming JSON message
@@ -93,6 +98,14 @@ private slots:
 	///
 	void handleTokenResponse(const bool& success, QObject* caller, const QString& token, const QString& comment, const QString& id);
 
+	///
+	/// @brief Handle whenever the state of a instance (HyperionIManager) changes according to enum instanceState
+	/// @param instaneState  A state from enum
+	/// @param instance      The index of instance
+	/// @param name          The name of the instance, just available with H_CREATED
+	///
+	void handleInstanceStateChange(const instanceState& state, const quint8& instance, const QString& name = QString());
+
 signals:
 	///
 	/// Signal emits with the reply message provided with handleMessage()
@@ -118,8 +131,6 @@ private:
 	/// Reflect auth required
 	bool _apiAuthRequired;
 
-	// The JsonCB instance which handles data subscription/notifications
-	JsonCB* _jsonCB;
 	// true if further callbacks are forbidden (http)
 	bool _noListener;
     /// The peer address of the client
@@ -128,8 +139,14 @@ private:
 	/// Log instance
 	Logger* _log;
 
+	/// Hyperion instance manager
+	HyperionIManager* _instanceManager;
+
 	/// Hyperion instance
 	Hyperion* _hyperion;
+
+	// The JsonCB instance which handles data subscription/notifications
+	JsonCB* _jsonCB;
 
 	/// timer for ledcolors streaming
 	QTimer _timer_ledcolors;
@@ -138,6 +155,7 @@ private:
 	QJsonObject _streaming_leds_reply;
 	QJsonObject _streaming_image_reply;
 	QJsonObject _streaming_logging_reply;
+	bool _ledcolorsImageActive = false;
 
 	/// flag to determine state of log streaming
 	bool _streaming_logging_activated;
@@ -150,6 +168,14 @@ private:
 
 	/// Plugins instance
 	Plugins* _plugins;
+
+	///
+	/// @brief Handle the switches of Hyperion instances
+	/// @param instance the instance to switch
+	/// @param forced  indicate if it was a forced switch by system
+	/// @return true on success. false if not found
+	///
+	const bool handleInstanceSwitch(const quint8& instance = 0, const bool& forced = false);
 
 	///
 	/// Handle an incoming JSON Color message
@@ -290,6 +316,12 @@ private:
 	/// @param message the incoming message
 	///
 	void handlePluginCommand(const QJsonObject & message, const QString &command, const int tan);
+
+	/// Handle an incoming JSON instance message
+	///
+	/// @param message the incoming message
+	///
+	void handleInstanceCommand(const QJsonObject & message, const QString &command, const int tan);
 
 	///
 	/// Handle an incoming JSON message of unknown type

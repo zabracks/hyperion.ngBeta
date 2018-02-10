@@ -20,7 +20,6 @@ ProtoServer::ProtoServer(const QJsonDocument& config)
 	, _log(Logger::getInstance("PROTOSERVER"))
 	, _netOrigin(NetOrigin::getInstance())
 {
-	Debug(_log,"Instance created");
 	connect( _server, SIGNAL(newConnection()), this, SLOT(newConnection()));
 	handleSettingsUpdate(settings::PROTOSERVER, config);
 }

@@ -40,13 +40,12 @@
 #endif
 
 #include <utils/Logger.h>
-#include <utils/Image.h>
 #include <utils/VideoMode.h>
 
 // settings management
 #include <utils/settings.h>
 
-class Hyperion;
+class HyperionIManager;
 class SysTray;
 class JsonServer;
 class ProtoServer;
@@ -68,7 +67,7 @@ class HyperionDaemon : public QObject
 	friend SysTray;
 
 public:
-	HyperionDaemon(QString configFile, QString rootPath, QObject *parent, const bool& logLvlOverwrite );
+	HyperionDaemon(QString rootPath, QObject *parent, const bool& logLvlOverwrite );
 	~HyperionDaemon();
 
 	quint16 getWebServerPort();
@@ -97,16 +96,6 @@ signals:
 	void settingsChanged(const settings::type& type, const QJsonDocument& data);
 
 	///
-	/// @brief PIPE SystemCapture images from SystemCapture over HyperionDaemon to Hyperion class
-	///
-	void systemImage(const Image<ColorRgb>&  image);
-
-	///
-	/// @brief PIPE v4lCapture images from v4lCapture over HyperionDaemon to Hyperion class
-	///
-	void v4lImage(const Image<ColorRgb> & image);
-
-	///
 	/// @brief After eval of setVideoMode this signal emits with a new one on change
 	///
 	void videoMode(const VideoMode& mode);
@@ -133,6 +122,7 @@ private:
 	void createGrabberX11(const QJsonObject & grabberConfig);
 
 	Logger*                _log;
+	HyperionIManager*      _instanceManager;
 	AuthManager*           _authManager;
 	BonjourBrowserWrapper* _bonjourBrowserWrapper;
 	NetOrigin*             _netOrigin;
@@ -147,7 +137,6 @@ private:
 	AmlogicWrapper*        _amlGrabber;
 	FramebufferWrapper*    _fbGrabber;
 	OsxWrapper*            _osxGrabber;
-	Hyperion*              _hyperion;
 	Stats*                 _stats;
 	SSDPHandler*           _ssdp;
 

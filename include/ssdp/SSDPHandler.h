@@ -19,9 +19,14 @@ class QNetworkConfigurationManager;
 class SSDPHandler : public SSDPServer{
 	Q_OBJECT
 public:
-	SSDPHandler(QObject * parent, WebServer* webserver, const quint16& flatBufPort);
+	SSDPHandler(WebServer* webserver, const quint16& flatBufPort, QObject * parent = nullptr);
 
 public slots:
+	///
+	/// @brief Init SSDP after thread start
+	///
+	void initServer();
+
 	///
 	/// @brief get state changes from webserver
 	///

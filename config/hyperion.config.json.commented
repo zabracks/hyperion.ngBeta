@@ -303,7 +303,8 @@
 	"network" : {
 		"internetAccessAPI" : false,
 		"ipWhitelist" : [],
-		"apiAuth" : true
+		"apiAuth" : true,
+		"localApiAuth" : false
 	},
 
 	"flatbufServer" :

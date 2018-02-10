@@ -6,14 +6,14 @@
 
 #include <api/JsonAPI.h>
 
-WebJsonRpc::WebJsonRpc(QtHttpRequest* request, QtHttpServer* server, QtHttpClientWrapper* parent)
+WebJsonRpc::WebJsonRpc(QtHttpRequest* request, QtHttpServer* server, const bool& localConnection, QtHttpClientWrapper* parent)
 	: QObject(parent)
 	, _server(server)
 	, _wrapper(parent)
 	, _log(Logger::getInstance("HTTPJSONRPC"))
 {
 	const QString client = request->getClientInfo().clientAddress.toString();
-	_jsonAPI = new JsonAPI(client, _log, this, true);
+	_jsonAPI = new JsonAPI(client, _log, localConnection, this, true);
 	connect(_jsonAPI, &JsonAPI::callbackMessage, this, &WebJsonRpc::handleCallback);
 }
 

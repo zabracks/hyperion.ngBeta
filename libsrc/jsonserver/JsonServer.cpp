@@ -22,8 +22,6 @@ JsonServer::JsonServer(const QJsonDocument& config)
 	, _log(Logger::getInstance("JSONSERVER"))
 	, _netOrigin(NetOrigin::getInstance())
 {
-	Debug(_log, "Created instance");
-
 	// Set trigger for incoming connections
 	connect(_server, SIGNAL(newConnection()), this, SLOT(newConnection()));
 
@@ -100,7 +98,7 @@ void JsonServer::newConnection()
 			if(_netOrigin->accessAllowed(socket->peerAddress(), socket->localAddress()))
 			{
 				Debug(_log, "New connection from: %s ",socket->localAddress().toString().toStdString().c_str());
-				JsonClientConnection * connection = new JsonClientConnection(socket);
+				JsonClientConnection * connection = new JsonClientConnection(socket, _netOrigin->isLocalAddress(socket->peerAddress(), socket->localAddress()));
 				_openConnections.insert(connection);
 
 				// register slot for cleaning up after the connection closed

@@ -9,6 +9,7 @@
 		},
 		"subcommand" : {
 			"type" : "string",
+			"required" : true,
 			"enum" : ["requestToken","createToken","deleteToken","getTokenList","logout","login","required","answerRequest","getPendingRequests"]
 		},
 		"tan" : {
@@ -28,7 +29,7 @@
 		},
 		"comment" : {
 			"type" : "string",
-			"minLength" : 10
+			"minLength" : 5
 		},
 		"id" : {
 			"type" : "string",

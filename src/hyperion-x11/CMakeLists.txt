@@ -6,8 +6,10 @@ find_package(X11 REQUIRED)
 
 include_directories(
 	${CMAKE_CURRENT_BINARY_DIR}/../../libsrc/protoserver
+	${CMAKE_CURRENT_BINARY_DIR}/../../libsrc/flatbufserver
 	${X11_INCLUDES}
 	${PROTOBUF_INCLUDE_DIRS}
+	${FLATBUFFERS_INCLUDE_DIRS}
 )
 
 set(Hyperion_X11_HEADERS
@@ -30,6 +32,8 @@ target_link_libraries(${PROJECT_NAME}
 	commandline
 	hyperion-utils
 	protoclient
+	flatbufserver
+	flatbuffers
 	x11-grabber
 	ssdp
 	${X11_LIBRARIES}

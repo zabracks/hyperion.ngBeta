@@ -9,9 +9,8 @@
 
 using namespace hyperion;
 
-LinearColorSmoothing::LinearColorSmoothing( LedDevice * ledDevice, const QJsonDocument& config, Hyperion* hyperion)
-	: LedDevice()
-	, _ledDevice(ledDevice)
+LinearColorSmoothing::LinearColorSmoothing(const QJsonDocument& config, Hyperion* hyperion)
+	: LedDevice(QJsonObject(), hyperion)
 	, _log(Logger::getInstance("SMOOTHING"))
 	, _hyperion(hyperion)
 	, _updateInterval(1000)
@@ -23,8 +22,6 @@ LinearColorSmoothing::LinearColorSmoothing( LedDevice * ledDevice, const QJsonDo
 	, _pause(false)
 	, _currentConfigId(0)
 {
-	Debug(_log, "Instance created");
-
 	// set initial state to true, as LedDevice::enabled() is true by default
 	_hyperion->getComponentRegister().componentStateChanged(hyperion::COMP_SMOOTHING, true);
 
@@ -44,8 +41,7 @@ LinearColorSmoothing::LinearColorSmoothing( LedDevice * ledDevice, const QJsonDo
 
 LinearColorSmoothing::~LinearColorSmoothing()
 {
-	// Make sure to switch off the underlying led-device (because switchOff is no longer forwarded)
-	_ledDevice->switchOff();
+
 }
 
 void LinearColorSmoothing::handleSettingsUpdate(const settings::type& type, const QJsonDocument& config)
@@ -150,7 +146,7 @@ void LinearColorSmoothing::queueColors(const std::vector<ColorRgb> & ledColors)
 	{
 		// No output delay => immediate write
 		if ( _writeToLedsEnable && !_pause)
-			_ledDevice->setLedValues(ledColors);
+			emit _hyperion->ledDeviceData(ledColors);
 
 	}
 	else
@@ -166,7 +162,7 @@ void LinearColorSmoothing::queueColors(const std::vector<ColorRgb> & ledColors)
 			{
 				if (!_pause)
 				{
-					_ledDevice->setLedValues(_outputQueue.front());
+					emit _hyperion->ledDeviceData(_outputQueue.front());
 				}
 				_outputQueue.pop_front();
 			}
@@ -237,19 +233,4 @@ bool LinearColorSmoothing::selectConfig(unsigned cfg, const bool& force)
 	// reset to default
 	_currentConfigId = 0;
 	return false;
-}
-
-void LinearColorSmoothing::startTimerDelayed()
-{
-	QTimer::singleShot(500, this, SLOT(delayStartTimer()));
-}
-
-void LinearColorSmoothing::stopTimer()
-{
-	_timer->stop();
-}
-
-void LinearColorSmoothing::delayStartTimer()
-{
-	_timer->start();
 }

@@ -16,7 +16,7 @@ class QtHttpClientWrapper : public QObject {
     Q_OBJECT
 
 public:
-    explicit QtHttpClientWrapper (QTcpSocket * sock, QtHttpServer * parent);
+    explicit QtHttpClientWrapper (QTcpSocket * sock, const bool& localConnection, QtHttpServer * parent);
 
     static const char SPACE = ' ';
     static const char COLON = ':';
@@ -50,8 +50,9 @@ private:
     QTcpSocket    *   m_sockClient;
     QtHttpRequest *   m_currentRequest;
     QtHttpServer  *   m_serverHandle;
-	WebSocketClient * m_websocketClient = nullptr;
-	WebJsonRpc *      m_webJsonRpc = nullptr;
+	const bool        m_localConnection;
+	WebSocketClient * m_websocketClient;
+	WebJsonRpc *      m_webJsonRpc;
 };
 
 #endif // QTHTTPCLIENTWRAPPER_H

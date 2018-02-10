@@ -19,7 +19,6 @@
 #include <utils/Components.h>
 #include <utils/JsonUtils.h>
 
-#include <hyperion/Hyperion.h>
 #include <jsonserver/JsonServer.h>
 #include <protoserver/ProtoServer.h>
 #include <udplistener/UDPListener.h>
@@ -43,6 +42,9 @@
 // AuthManager
 #include <hyperion/AuthManager.h>
 
+// InstanceManager Hyperion
+#include <hyperion/HyperionIManager.h>
+
 // NetOrigin checks
 #include <utils/NetOrigin.h>
 
@@ -51,10 +53,11 @@
 
 HyperionDaemon* HyperionDaemon::daemon = nullptr;
 
-HyperionDaemon::HyperionDaemon(QString configFile, const QString rootPath, QObject *parent, const bool& logLvlOverwrite)
+HyperionDaemon::HyperionDaemon(const QString rootPath, QObject *parent, const bool& logLvlOverwrite)
 	: QObject(parent)
 	, _log(Logger::getInstance("DAEMON"))
-	, _authManager(new AuthManager(rootPath, this))
+	, _instanceManager(new HyperionIManager(rootPath, this))
+	, _authManager(new AuthManager(this))
 	, _bonjourBrowserWrapper(new BonjourBrowserWrapper())
 	, _netOrigin(new NetOrigin(this))
 	, _pyInit(new PythonInit())
@@ -68,7 +71,6 @@ HyperionDaemon::HyperionDaemon(QString configFile, const QString rootPath, QObje
 	, _amlGrabber(nullptr)
 	, _fbGrabber(nullptr)
 	, _osxGrabber(nullptr)
-	, _hyperion(nullptr)
 	, _stats(nullptr)
 	, _ssdp(nullptr)
 	, _currVideoMode(VIDEO_2D)
@@ -79,9 +81,11 @@ HyperionDaemon::HyperionDaemon(QString configFile, const QString rootPath, QObje
 	qRegisterMetaType<Image<ColorRgb>>("Image<ColorRgb>");
 	qRegisterMetaType<hyperion::Components>("hyperion::Components");
 	qRegisterMetaType<settings::type>("settings::type");
+	qRegisterMetaType<VideoMode>("VideoMode");
+	qRegisterMetaType<QMap<quint8,QJsonObject>>("QMap<quint8,QJsonObject>");
 
 	// init settings
-	_settingsManager = new SettingsManager(0,configFile);
+	_settingsManager = new SettingsManager(0, this);
 
 	// set inital log lvl if the loglvl wasn't overwritten by arg
 	if(!logLvlOverwrite)
@@ -96,25 +100,22 @@ HyperionDaemon::HyperionDaemon(QString configFile, const QString rootPath, QObje
 	_netOrigin->handleSettingsUpdate(settings::NETWORK, _settingsManager->getSetting(settings::NETWORK));
 
 	// Create Stats
-	_stats = new Stats(_settingsManager->getSettings());
+	_stats = new Stats(_settingsManager->getSettings(), this);
 
-	// spawn all Hyperion instances before network services
-	_hyperion = Hyperion::initInstance(this, 0, configFile, rootPath);
+	// spawn all Hyperion instances (non blocking)
+	_instanceManager->startAll();
 
-	Info(_log, "Hyperion initialized");
+	//connect(_hyperion,SIGNAL(closing()),this,SLOT(freeObjects())); for app restart refactor required
 
-	connect(_hyperion,SIGNAL(closing()),this,SLOT(freeObjects()));
-	// listen for setting changes
-	connect(_hyperion, &Hyperion::settingsChanged, this, &HyperionDaemon::settingsChanged);
+	// pipe settings changes from HyperionIManager to Daemon
+	connect(_instanceManager, &HyperionIManager::settingsChanged, this, &HyperionDaemon::settingsChanged);
 	// listen for setting changes of framegrabber and v4l2
 	connect(this, &HyperionDaemon::settingsChanged, this, &HyperionDaemon::handleSettingsUpdate);
-	// forward system and v4l images to Hyperion
-	connect(this, &HyperionDaemon::systemImage, _hyperion, &Hyperion::systemImage);
-	connect(this, &HyperionDaemon::v4lImage, _hyperion, &Hyperion::v4lImage);
-	// forward videoModes from Hyperion to Daemon evaluation
-	connect(_hyperion, &Hyperion::videoMode, this, &HyperionDaemon::setVideoMode);
-	// forward videoMode changes from Daemon to Hyperion
-	connect(this, &HyperionDaemon::videoMode, _hyperion, &Hyperion::newVideoMode);
+
+	// forward videoModes from HyperionIManager to Daemon evaluation
+	connect(_instanceManager, &HyperionIManager::requestVideoMode, this, &HyperionDaemon::setVideoMode);
+	// return videoMode changes from Daemon to HyperionIManager
+	connect(this, &HyperionDaemon::videoMode, _instanceManager, &HyperionIManager::newVideoMode);
 
 	// ---- grabber -----
 	#if !defined(ENABLE_DISPMANX) && !defined(ENABLE_OSX) && !defined(ENABLE_FB) && !defined(ENABLE_X11) && !defined(ENABLE_AMLOGIC)
@@ -131,7 +132,6 @@ HyperionDaemon::HyperionDaemon(QString configFile, const QString rootPath, QObje
 HyperionDaemon::~HyperionDaemon()
 {
 	freeObjects();
-	delete _hyperion;
 	delete _settingsManager;
 	delete _pyInit;
 }
@@ -157,14 +157,20 @@ const QJsonDocument HyperionDaemon::getSetting(const settings::type &type)
 
 void HyperionDaemon::freeObjects()
 {
-	_hyperion->clearall(true);
-	// destroy network first as a client might want to access pointers
-	delete _webserver;
+	// destroy network first as a client might want to access Hyperion
 	delete _jsonServer;
 	delete _protoServer;
 	_flatBufferServer->thread()->quit();
 	_flatBufferServer->thread()->wait(1000);
+	//ssdp before webserver
+	_ssdp->thread()->quit();
+	_ssdp->thread()->wait(1000);
+	_webserver->thread()->quit();
+	_webserver->thread()->wait(1000);
 	delete _udpListener;
+
+	// stop Hyperion (blocking operation)
+	_instanceManager->stopAll();
 
 	delete _bonjourBrowserWrapper;
 	delete _amlGrabber;
@@ -175,7 +181,6 @@ void HyperionDaemon::freeObjects()
 	{
 		delete grabber;
 	}
-	delete _stats;
 
 	_v4l2Grabbers.clear();
 	_bonjourBrowserWrapper = nullptr;
@@ -200,30 +205,40 @@ void HyperionDaemon::startNetworkServices()
 	_protoServer = new ProtoServer(getSetting(settings::PROTOSERVER));
 	connect(this, &HyperionDaemon::settingsChanged, _protoServer, &ProtoServer::handleSettingsUpdate);
 
-	// Create FlatBuffer server & move to Thread
+	// Create FlatBuffer server in thread
 	_flatBufferServer = new FlatBufferServer(getSetting(settings::FLATBUFSERVER));
-	connect(this, &HyperionDaemon::settingsChanged, _flatBufferServer, &FlatBufferServer::handleSettingsUpdate);
 	QThread* fbThread = new QThread(this);
-
 	_flatBufferServer->moveToThread(fbThread);
 	connect( fbThread, &QThread::started, _flatBufferServer, &FlatBufferServer::initServer );
 	connect( fbThread, &QThread::finished, _flatBufferServer, &QObject::deleteLater );
 	connect( fbThread, &QThread::finished, fbThread, &QObject::deleteLater );
+	connect(this, &HyperionDaemon::settingsChanged, _flatBufferServer, &FlatBufferServer::handleSettingsUpdate);
 	fbThread->start();
 
 	// Create UDP listener
 	_udpListener = new UDPListener(getSetting(settings::UDPLISTENER));
 	connect(this, &HyperionDaemon::settingsChanged, _udpListener, &UDPListener::handleSettingsUpdate);
 
-	// Create Webserver
+	// Create Webserver in thread
 	_webserver = new WebServer(getSetting(settings::WEBSERVER));
+	QThread* wsThread = new QThread(this);
+	_webserver->moveToThread(wsThread);
+	connect( wsThread, &QThread::started, _webserver, &WebServer::initServer );
+	connect( wsThread, &QThread::finished, _webserver, &QObject::deleteLater );
+	connect( wsThread, &QThread::finished, wsThread, &QObject::deleteLater );
 	connect(this, &HyperionDaemon::settingsChanged, _webserver, &WebServer::handleSettingsUpdate);
+	wsThread->start();
 
-	// create SSDPHandler (after webserver), connect webserver state switches
 	// TODO replace proto config with flatbuf config
-	_ssdp = new SSDPHandler(this, _webserver, getSetting(settings::PROTOSERVER).object()["port"].toInt());
-	connect(_webserver, &WebServer::stateChange, _ssdp, &SSDPHandler::handleWebServerStateChange);
+	_ssdp = new SSDPHandler(_webserver, getSetting(settings::PROTOSERVER).object()["port"].toInt());
+	QThread* ssdpThread = new QThread(this);
+	_ssdp->moveToThread(ssdpThread);
+	connect( ssdpThread, &QThread::started, _ssdp, &SSDPHandler::initServer );
+	connect( ssdpThread, &QThread::finished, _ssdp, &QObject::deleteLater );
+	connect( ssdpThread, &QThread::finished, ssdpThread, &QObject::deleteLater );
+	connect( _webserver, &WebServer::stateChange, _ssdp, &SSDPHandler::handleWebServerStateChange);
 	connect(this, &HyperionDaemon::settingsChanged, _ssdp, &SSDPHandler::handleSettingsUpdate);
+	ssdpThread->start();
 }
 
 void HyperionDaemon::handleSettingsUpdate(const settings::type& type, const QJsonDocument& config)
@@ -329,7 +344,6 @@ void HyperionDaemon::handleSettingsUpdate(const settings::type& type, const QJso
 			Debug(_log, "V4L2 grabber created");
 
 			// connect to HyperionDaemon signal
-			connect(grabber, &V4L2Wrapper::systemImage, this, &HyperionDaemon::v4lImage);
 			connect(this, &HyperionDaemon::videoMode, grabber, &V4L2Wrapper::setVideoMode);
 			connect(this, &HyperionDaemon::settingsChanged, grabber, &V4L2Wrapper::handleSettingsUpdate);
 
@@ -349,7 +363,6 @@ void HyperionDaemon::createGrabberDispmanx()
 
 	// connect to HyperionDaemon signal
 	connect(this, &HyperionDaemon::videoMode, _dispmanx, &DispmanxWrapper::setVideoMode);
-	connect(_dispmanx, &DispmanxWrapper::systemImage, this, &HyperionDaemon::systemImage);
 	connect(this, &HyperionDaemon::settingsChanged, _dispmanx, &DispmanxWrapper::handleSettingsUpdate);
 
 	_dispmanx->start();
@@ -369,7 +382,6 @@ void HyperionDaemon::createGrabberAmlogic()
 
 	// connect to HyperionDaemon signal
 	connect(this, &HyperionDaemon::videoMode, _amlGrabber, &AmlogicWrapper::setVideoMode);
-	connect(_amlGrabber, &AmlogicWrapper::systemImage, this, &HyperionDaemon::systemImage);
 	connect(this, &HyperionDaemon::settingsChanged, _amlGrabber, &AmlogicWrapper::handleSettingsUpdate);
 
 	_amlGrabber->start();
@@ -390,7 +402,6 @@ void HyperionDaemon::createGrabberX11(const QJsonObject & grabberConfig)
 
 	// connect to HyperionDaemon signal
 	connect(this, &HyperionDaemon::videoMode, _x11Grabber, &X11Wrapper::setVideoMode);
-	connect(_x11Grabber, &X11Wrapper::systemImage, this, &HyperionDaemon::systemImage);
 	connect(this, &HyperionDaemon::settingsChanged, _x11Grabber, &X11Wrapper::handleSettingsUpdate);
 
 	_x11Grabber->start();
@@ -411,7 +422,6 @@ void HyperionDaemon::createGrabberFramebuffer(const QJsonObject & grabberConfig)
 	_fbGrabber->setCropping(_grabber_cropLeft, _grabber_cropRight, _grabber_cropTop, _grabber_cropBottom);
 	// connect to HyperionDaemon signal
 	connect(this, &HyperionDaemon::videoMode, _fbGrabber, &FramebufferWrapper::setVideoMode);
-	connect(_fbGrabber, &FramebufferWrapper::systemImage, this, &HyperionDaemon::systemImage);
 	connect(this, &HyperionDaemon::settingsChanged, _fbGrabber, &FramebufferWrapper::handleSettingsUpdate);
 
 	_fbGrabber->start();
@@ -432,7 +442,6 @@ void HyperionDaemon::createGrabberOsx(const QJsonObject & grabberConfig)
 
 	// connect to HyperionDaemon signal
 	connect(this, &HyperionDaemon::videoMode, _osxGrabber, &OsxWrapper::setVideoMode);
-	connect(_osxGrabber, &OsxWrapper::systemImage, this, &HyperionDaemon::systemImage);
 	connect(this, &HyperionDaemon::settingsChanged, _osxGrabber, &OsxWrapper::handleSettingsUpdate);
 
 	_osxGrabber->start();

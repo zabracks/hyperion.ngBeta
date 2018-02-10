@@ -19,5 +19,6 @@
         <file alias="schema-videomode">JSONRPC_schema/schema-videomode.json</file>
 		<file alias="schema-plugin">JSONRPC_schema/schema-plugin.json</file>
 		<file alias="schema-authorize">JSONRPC_schema/schema-authorize.json</file>
+		<file alias="schema-instance">JSONRPC_schema/schema-instance.json</file>
     </qresource>
 </RCC>

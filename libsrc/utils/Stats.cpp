@@ -12,10 +12,10 @@
 
 Stats* Stats::instance = nullptr;
 
-Stats::Stats(const QJsonObject& config)
-	: QObject()
+Stats::Stats(const QJsonObject& config, QObject* parent)
+	: QObject(parent)
 	, _log(Logger::getInstance("STATS"))
-	, _metaTable(new MetaTable())
+	, _metaTable(new MetaTable(this))
 {
 	Stats::instance = this;
 

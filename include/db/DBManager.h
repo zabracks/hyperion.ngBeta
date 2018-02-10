@@ -26,7 +26,7 @@ class DBManager : public QObject
 	Q_OBJECT
 
 public:
-	DBManager();
+	DBManager(QObject* parent = nullptr);
 	~DBManager();
 
 	/// set root path
@@ -82,7 +82,7 @@ public:
 	/// @brief Get data of a single record, multiple records are not supported
 	/// @param[in]  conditions  condition to search for (WHERE)
 	/// @param[out] results     results of query
-	/// @param[in]  tColumns    target columns to search in (optional)
+	/// @param[in]  tColumns    target columns to search in (optional) if not provided returns all columns
 	/// @return                 True on success else false
 	///
 	const bool getRecord(const VectorPair& conditions, QVariantMap& results, const QStringList& tColumns = QStringList()) const;
@@ -91,15 +91,15 @@ public:
 	/// @brief Get data of multiple records, you need to specify the columns. This search is without conditions. Good to grab all data from db
 	/// @param[in]  conditions  condition to search for (WHERE)
 	/// @param[out] results     results of query
-	/// @param[in]  tColumns    target columns to search in
+	/// @param[in]  tColumns    target columns to search in (optional)  if not provided returns all columns
 	/// @return                 True on success else false
 	///
-	const bool getRecords(QVector<QVariantMap>& results, const QStringList& tColumns) const;
+	const bool getRecords(QVector<QVariantMap>& results, const QStringList& tColumns = QStringList()) const;
 
 	///
 	/// @brief Delete a record determined by conditions
 	/// @param[in]  conditions conditions of the row to delete it (WHERE)
-	/// @return                True on success on error or not found false
+	/// @return                True on success; on error or not found false
 	///
 	const bool deleteRecord(const VectorPair& conditions) const;
 

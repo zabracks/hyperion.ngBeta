@@ -9,8 +9,8 @@
 // not in header because of linking
 static QString _rootPath;
 
-DBManager::DBManager()
-	: QObject()
+DBManager::DBManager(QObject* parent)
+	: QObject(parent)
 	, _log(Logger::getInstance("DB"))
 {
 }
@@ -90,7 +90,6 @@ const bool DBManager::createRecord(const VectorPair& conditions, const QVariantM
 		cValues << pair.second;
 		placeh.append("?");
 	}
-
 	query.prepare(QString("INSERT INTO %1 ( %2 ) VALUES ( %3 )").arg(_table,prep.join(", ")).arg(placeh.join(", ")));
 	// add column & condition values
 	doAddBindValue(query, cValues);
@@ -104,14 +103,16 @@ const bool DBManager::createRecord(const VectorPair& conditions, const QVariantM
 
 const bool DBManager::recordExists(const VectorPair& conditions) const
 {
+	if(conditions.isEmpty())
+		return false;
+
 	QSqlDatabase idb = getDB();
 	QSqlQuery query(idb);
 	query.setForwardOnly(true);
 
 	QStringList prepCond;
 	QVariantList bindVal;
-	if(!conditions.isEmpty())
-		prepCond << "WHERE";
+	prepCond << "WHERE";
 
 	for(const auto& pair : conditions)
 	{

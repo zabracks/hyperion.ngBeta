@@ -5,29 +5,20 @@
 #include <unistd.h>
 
 // QT includes
-#include <QDateTime>
-#include <QThread>
-#include <QRegExp>
 #include <QString>
 #include <QStringList>
-#include <QCryptographicHash>
-#include <QTimer>
-#include <QFile>
-#include <QFileInfo>
-#include <QHostInfo>
+#include <QThread>
 
 // hyperion include
 #include <hyperion/Hyperion.h>
-#include <hyperion/MessageForwarder.h>
 #include <hyperion/ImageProcessor.h>
 #include <hyperion/ColorAdjustment.h>
 
 // utils
 #include <utils/hyperion.h>
 
-// Leddevice includes
-#include <leddevice/LedDevice.h>
-#include <leddevice/LedDeviceFactory.h>
+// Leddevice include
+#include <leddevice/LedDeviceWrapper.h>
 
 #include <hyperion/MultiColorAdjustment.h>
 #include "LinearColorSmoothing.h"
@@ -37,9 +28,6 @@
 
 // plugins
 #include <plugin/Plugins.h>
-
-// Hyperion Daemon
-#include <../src/hyperiond/hyperiond.h>
 
 // settingsManagaer
 #include <hyperion/SettingsManager.h>
@@ -53,33 +41,11 @@
 // Boblight
 #include <boblightserver/BoblightServer.h>
 
-Hyperion* Hyperion::_hyperion = nullptr;
-
-Hyperion* Hyperion::initInstance( HyperionDaemon* daemon, const quint8& instance, const QString configFile, const QString rootPath)
-{
-	if ( Hyperion::_hyperion != nullptr )
-		throw std::runtime_error("Hyperion::initInstance can be called only one time");
-	Hyperion::_hyperion = new Hyperion(daemon, instance, configFile, rootPath);
-
-	return Hyperion::_hyperion;
-}
-
-Hyperion* Hyperion::getInstance()
-{
-	if ( Hyperion::_hyperion == nullptr )
-		throw std::runtime_error("Hyperion::getInstance used without call of Hyperion::initInstance before");
-
-	return Hyperion::_hyperion;
-}
-
-MessageForwarder * Hyperion::getForwarder()
-{
-	return _messageForwarder;
-}
-
-Hyperion::Hyperion(HyperionDaemon* daemon, const quint8& instance, const QString configFile, const QString rootPath)
-	: _daemon(daemon)
-	, _settingsManager(new SettingsManager(this, instance, configFile))
+// TODO move constructor to start() where it makes sense (eg class inits)
+Hyperion::Hyperion(const quint8& instance, const QString& rootPath)
+	: QObject()
+	, _instIndex(instance)
+	, _settingsManager(new SettingsManager(instance, this))
 	, _componentRegister(this)
 	, _ledString(hyperion::createLedString(getSetting(settings::LEDS).array(), hyperion::createColorOrder(getSetting(settings::DEVICE).object())))
 	, _ledStringClone(hyperion::createLedStringClone(getSetting(settings::LEDS).array(), hyperion::createColorOrder(getSetting(settings::DEVICE).object())))
@@ -88,16 +54,29 @@ Hyperion::Hyperion(HyperionDaemon* daemon, const quint8& instance, const QString
 	, _raw2ledAdjustment(hyperion::createLedColorsAdjustment(_ledString.leds().size(), getSetting(settings::COLOR).object()))
 	, _effectEngine(nullptr)
 	, _plugins(nullptr)
-	, _messageForwarder(new MessageForwarder(this, getSetting(settings::NETFORWARD)))
-	, _configFile(configFile)
+//	, _messageForwarder(new MessageForwarder(this, getSetting(settings::NETFORWARD)))
 	, _rootPath(rootPath)
 	, _log(Logger::getInstance("HYPERION"))
 	, _hwLedCount()
-	, _configHash()
 	, _ledGridSize(hyperion::getLedLayoutGridSize(getSetting(settings::LEDS).array()))
 	, _prevCompId(hyperion::COMP_INVALID)
 	, _ledBuffer(_ledString.leds().size(), ColorRgb::BLACK)
 {
+	
+}
+
+Hyperion::~Hyperion()
+{
+	freeObjects(false);
+}
+
+void Hyperion::start()
+{
+	// forward settings changed to Hyperion
+	connect(_settingsManager, &SettingsManager::settingsChanged, this, &Hyperion::settingsChanged);
+	// get newVideoMode from HyperionIManager
+	connect(this, &Hyperion::newVideoMode, this, &Hyperion::handleNewVideoMode);
+
 	if (!_raw2ledAdjustment->verifyAdjustments())
 	{
 		Warning(_log, "At least one led has no color calibration, please add all leds from your led layout to an 'LED index' field!");
@@ -132,32 +111,21 @@ Hyperion::Hyperion(HyperionDaemon* daemon, const quint8& instance, const QString
 	QJsonObject ledDevice = getSetting(settings::DEVICE).object();
 	ledDevice["currentLedCount"] = int(_hwLedCount); // Inject led count info
 
-	_device       = LedDeviceFactory::construct(ledDevice);
-	_deviceSmooth = new LinearColorSmoothing(_device, getSetting(settings::SMOOTHING), this);
+	_ledDeviceWrapper = new LedDeviceWrapper(this);
+	connect(this, &Hyperion::componentStateChanged, _ledDeviceWrapper, &LedDeviceWrapper::handleComponentState);
+	connect(this, &Hyperion::ledDeviceData, _ledDeviceWrapper, &LedDeviceWrapper::write);
+	_ledDeviceWrapper->createLedDevice(ledDevice);
+
+	// smoothing
+	_deviceSmooth = new LinearColorSmoothing(getSetting(settings::SMOOTHING), this);
 	connect(this, &Hyperion::settingsChanged, _deviceSmooth, &LinearColorSmoothing::handleSettingsUpdate);
 
-	getComponentRegister().componentStateChanged(hyperion::COMP_LEDDEVICE, _device->componentState());
-
-	// create the effect engine and pipe the updateEmit; must be initialized after smoothing!
+	// create the effect engine; needs to be initialized after smoothing!
 	_effectEngine = new EffectEngine(this,getSetting(settings::EFFECTS).object());
 	connect(_effectEngine, &EffectEngine::effectListUpdated, this, &Hyperion::effectListUpdated);
 
 	// init plugins
-	_plugins = new Plugins(this, instance);
-
-	// setup config state checks and initial shot
-	checkConfigState();
-	if(_fsWatcher.addPath(_configFile))
-	{
-		QObject::connect(&_fsWatcher, &QFileSystemWatcher::fileChanged, this, &Hyperion::checkConfigState);
-	}
-	else
-	{
-		_cTimer = new QTimer(this);
-		Warning(_log,"Filesystem Observer failed for file: %s, use fallback timer", _configFile.toStdString().c_str());
-		connect(_cTimer, SIGNAL(timeout()), this, SLOT(checkConfigState()));
-		_cTimer->start(2000);
-	}
+	_plugins = new Plugins(this, _instIndex);
 
 	// initial startup effect
 	hyperion::handleInitialEffect(this, getSetting(settings::FGEFFECT).object());
@@ -171,21 +139,24 @@ Hyperion::Hyperion(HyperionDaemon* daemon, const quint8& instance, const QString
 	update();
 
 	// boblight, can't live in global scope as it depends on layout
-
 	_boblightServer = new BoblightServer(this, getSetting(settings::BOBLSERVER));
 	connect(this, &Hyperion::settingsChanged, _boblightServer, &BoblightServer::handleSettingsUpdate);
+
+	// instance inited
+	emit started();
+	// enter thread event loop
 }
 
-Hyperion::~Hyperion()
+void Hyperion::stop()
 {
-	freeObjects(false);
+	emit finished();
+	thread()->quit();
 }
 
 void Hyperion::freeObjects(bool emitCloseSignal)
 {
 	// switch off all leds
 	clearall(true);
-	_device->switchOff();
 
 	if (emitCloseSignal)
 	{
@@ -198,10 +169,9 @@ void Hyperion::freeObjects(bool emitCloseSignal)
 	delete _plugins;
 	delete _effectEngine;
 	//delete _deviceSmooth;
-	delete _device;
 	delete _raw2ledAdjustment;
-	delete _messageForwarder;
 	delete _settingsManager;
+	delete _ledDeviceWrapper;
 }
 
 void Hyperion::handleSettingsUpdate(const settings::type& type, const QJsonDocument& config)
@@ -250,8 +220,8 @@ void Hyperion::handleSettingsUpdate(const settings::type& type, const QJsonDocum
 		// handle hwLedCount update
 		_hwLedCount = qMax(unsigned(getSetting(settings::DEVICE).object()["hardwareLedCount"].toInt(getLedCount())), getLedCount());
 
-		// update led count in device
-		_device->setLedCount(_hwLedCount);
+		// update led count in device TODO let the device respond to ledcnt change (reinit)
+		//_device->setLedCount(_hwLedCount);
 
 		// change in leds are also reflected in adjustment
 		delete _raw2ledAdjustment;
@@ -272,7 +242,7 @@ void Hyperion::handleSettingsUpdate(const settings::type& type, const QJsonDocum
 		_hwLedCount = qMax(unsigned(dev["hardwareLedCount"].toInt(getLedCount())), getLedCount());
 
 		// force ledString update, if device ByteOrder changed
-		if(_device->getColorOrder() != dev["colorOrder"].toString("rgb"))
+		if(_ledDeviceWrapper->getColorOrder() != dev["colorOrder"].toString("rgb"))
 		{
 			_ledString = hyperion::createLedString(getSetting(settings::LEDS).array(), hyperion::createColorOrder(dev));
 			_ledStringClone = hyperion::createLedStringClone(getSetting(settings::LEDS).array(), hyperion::createColorOrder(dev));
@@ -286,16 +256,10 @@ void Hyperion::handleSettingsUpdate(const settings::type& type, const QJsonDocum
 		// update led count
 		_device->setLedCount(_hwLedCount);
 	*/
-		// do always reinit
-		// TODO segfaulting in LinearColorSmoothing::queueColor triggert from QTimer because of device->setLEdValues (results from gdb debugging and testing)
-		bool wasEnabled = _deviceSmooth->enabled();
-		_deviceSmooth->stopTimer();
-		delete _device;
+		// do always reinit until the led devices can handle dynamic changes
 		dev["currentLedCount"] = int(_hwLedCount); // Inject led count info
-		_device = LedDeviceFactory::construct(dev);
-		getComponentRegister().componentStateChanged(hyperion::COMP_LEDDEVICE, _device->componentState());
-		if(wasEnabled)
-			_deviceSmooth->startTimerDelayed();
+		_ledDeviceWrapper->createLedDevice(dev);
+
 		_lockUpdate = false;
 	}
 	// update once to push single color sets / adjustments/ ledlayout resizes and update ledBuffer color
@@ -312,15 +276,9 @@ bool Hyperion::saveSettings(QJsonObject config, const bool& correct)
 	return _settingsManager->saveSettings(config, correct);
 }
 
-QString Hyperion::getConfigFileName() const
-{
-	QFileInfo cF(_configFile);
-	return cF.fileName();
-}
-
 int Hyperion::getLatchTime() const
 {
-  return _device->getLatchTime();
+  return _ledDeviceWrapper->getLatchTime();
 }
 
 unsigned Hyperion::addSmoothingConfig(int settlingTime_ms, double ledUpdateFrequency_hz, unsigned updateDelay)
@@ -331,40 +289,6 @@ unsigned Hyperion::addSmoothingConfig(int settlingTime_ms, double ledUpdateFrequ
 unsigned Hyperion::getLedCount() const
 {
 	return _ledString.leds().size();
-}
-
-void Hyperion::checkConfigState(QString cfile)
-{
-	// Check config modifications
-	QFile f(_configFile);
-	if (f.open(QFile::ReadOnly))
-	{
-		QCryptographicHash hash(QCryptographicHash::Sha1);
-		if (hash.addData(&f))
-		{
-			if (_configHash.size() == 0)
-			{
-				_configHash = hash.result();
-			}
-			_configMod = _configHash != hash.result() ? true : false;
-		}
-	}
-	f.close();
-
-	if(_prevConfigMod != _configMod)
-	{
-		_prevConfigMod = _configMod;
-	}
-
-	// Check config writeable
-	QFile file(_configFile);
-	QFileInfo fileInfo(file);
-	_configWrite = fileInfo.isWritable() && fileInfo.isReadable() ? true : false;
-
-	if(_prevConfigWrite != _configWrite)
-	{
-		_prevConfigWrite = _configWrite;
-	}
 }
 
 void Hyperion::setSourceAutoSelectEnabled(bool enabled)
@@ -383,19 +307,15 @@ bool Hyperion::sourceAutoSelectEnabled()
 	return _muxer.isSourceAutoSelectEnabled();
 }
 
+void Hyperion::setNewComponentState(const hyperion::Components& component, const bool& state)
+{
+	_componentRegister.componentStateChanged(component, state);
+}
+
 void Hyperion::setComponentState(const hyperion::Components component, const bool state)
 {
-	switch (component)
-	{
-
-		case hyperion::COMP_LEDDEVICE:
-			_device->setEnable(state);
-			getComponentRegister().componentStateChanged(hyperion::COMP_LEDDEVICE, _device->componentState());
-			break;
-
-		default:
-			emit componentStateChanged(component, state);
-	}
+	// TODO REMOVE THIS STEP
+	emit componentStateChanged(component, state);
 }
 
 int Hyperion::getComponentState(const hyperion::Components& component) const
@@ -577,12 +497,12 @@ void Hyperion::setVideoMode(const VideoMode& mode)
 
 const VideoMode & Hyperion::getCurrentVideoMode()
 {
-	return _daemon->getVideoMode();
+	return _currVideoMode;
 }
 
 const QString & Hyperion::getActiveDevice()
 {
-	return _device->getActiveDevice();
+	return _ledDeviceWrapper->getActiveDevice();
 }
 
 void Hyperion::updatedComponentState(const hyperion::Components comp, const bool state)
@@ -592,11 +512,11 @@ void Hyperion::updatedComponentState(const hyperion::Components comp, const bool
 		if(state)
 		{
 			// first muxer to update all inputs
-			_muxer.setEnable(state);
+			//_muxer.setEnable(state);
 		}
 		else
 		{
-			_muxer.setEnable(state);
+			//_muxer.setEnable(state);
 		}
 	}
 }
@@ -690,7 +610,7 @@ void Hyperion::update()
 	}
 
 	// Write the data to the device
-	if (_device->enabled())
+	if (_ledDeviceWrapper->enabled())
 	{
 		_deviceSmooth->selectConfig(priorityInfo.smooth_cfg);
 
@@ -699,6 +619,6 @@ void Hyperion::update()
 			_deviceSmooth->setLedValues(_ledBuffer);
 
 		if  (! _deviceSmooth->enabled())
-			_device->setLedValues(_ledBuffer);
+			emit ledDeviceData(_ledBuffer);
 	}
 }

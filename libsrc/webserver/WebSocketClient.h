@@ -12,7 +12,7 @@ class JsonAPI;
 class WebSocketClient : public QObject {
 	Q_OBJECT
 public:
-	WebSocketClient(QtHttpRequest* request, QTcpSocket* sock, QObject* parent);
+	WebSocketClient(QtHttpRequest* request, QTcpSocket* sock, const bool& localConnection, QObject* parent);
 
 	struct WebSocketHeader
 	{

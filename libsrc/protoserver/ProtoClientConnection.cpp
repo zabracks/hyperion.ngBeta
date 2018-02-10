@@ -17,6 +17,7 @@
 #include "utils/ColorRgb.h"
 // Hyperion includes
 #include <hyperion/Hyperion.h>
+#include <hyperion/HyperionIManager.h>
 
 // project includes
 #include "ProtoClientConnection.h"
@@ -24,7 +25,7 @@
 ProtoClientConnection::ProtoClientConnection(QTcpSocket *socket)
 	: QObject()
 	, _socket(socket)
-	, _hyperion(Hyperion::getInstance())
+	, _hyperion(HyperionIManager::getInstance()->getHyperionInstance())
 	, _receiveBuffer()
 	, _priority(-1)
 	, _clientAddress(QHostInfo::fromName(socket->peerAddress().toString()).hostName())

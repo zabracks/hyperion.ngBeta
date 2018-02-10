@@ -2,6 +2,7 @@
 #include <hyperion/GrabberWrapper.h>
 #include <hyperion/Grabber.h>
 #include <HyperionConfig.h>
+#include <utils/GlobalSignals.h>
 
 // qt
 #include <QTimer>
@@ -20,6 +21,12 @@ GrabberWrapper::GrabberWrapper(QString grabberName, Grabber * ggrabber, unsigned
 	_image.resize(width, height);
 
 	connect(_timer, &QTimer::timeout, this, &GrabberWrapper::action);
+
+	// connect the image forwarding
+	if(_grabberName.startsWith("V4L"))
+		connect(this, &GrabberWrapper::systemImage, GlobalSignals::getInstance(), &GlobalSignals::setV4lImage);
+	else
+		connect(this, &GrabberWrapper::systemImage, GlobalSignals::getInstance(), &GlobalSignals::setSystemImage);
 }
 
 GrabberWrapper::~GrabberWrapper()

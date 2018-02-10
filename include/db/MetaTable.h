@@ -17,7 +17,8 @@ class MetaTable : public DBManager
 
 public:
 	/// construct wrapper with plugins table and columns
-	MetaTable()
+	MetaTable(QObject* parent = nullptr)
+		: DBManager(parent)
 	{
 		setTable("meta");
 

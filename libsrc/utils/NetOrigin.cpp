@@ -21,11 +21,20 @@ const bool NetOrigin::accessAllowed(const QHostAddress& address, const QHostAddr
 	if(_ipWhitelist.contains(address)) // v4 and v6
 		return true;
 
+	if(!isLocalAddress(address, local))
+	{
+		Warning(_log,"Client connection with IP address '%s' has been rejected! It's not whitelisted, access denied.",QSTRING_CSTR(address.toString()));
+		return false;
+	}
+	return true;
+}
+
+const bool NetOrigin::isLocalAddress(const QHostAddress& address, const QHostAddress& local)
+{
 	if(address.protocol() == QAbstractSocket::IPv4Protocol)
 	{
 		if(!address.isInSubnet(local, 24)) // 255.255.255.xxx; IPv4 0-32
 		{
-			Warning(_log,"Client connection with IP address '%s' has been rejected! It's not whitelisted/internet access denied.",QSTRING_CSTR(address.toString()));
 			return false;
 		}
 	}
@@ -33,7 +42,6 @@ const bool NetOrigin::accessAllowed(const QHostAddress& address, const QHostAddr
 	{
 		if(!address.isInSubnet(local, 64)) // 2001:db8:abcd:0012:XXXX:XXXX:XXXX:XXXX; IPv6 0-128
 		{
-			Warning(_log,"Client connection with IP address '%s' has been rejected! It's not whitelisted/internet access denied.",QSTRING_CSTR(address.toString()));
 			return false;
 		}
 	}

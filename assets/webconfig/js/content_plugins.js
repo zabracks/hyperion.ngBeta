@@ -269,8 +269,8 @@ $(document).ready(function() {
 	// connect update repo btn
 	document.getElementById("plugins_upd_repo").onclick = updateRepo;
 
-	$(hyperion).on("cmd-plugin-start cmd-plugin-stop cmd-plugin-error cmd-plugin-remove cmd-plugin-install cmd-plugin-updateavail cmd-plugin-save", function(e){
-		console.log("cmd-plugin-event",e);
+	$(hyperion).off("cmd-plugin-start cmd-plugin-stop cmd-plugin-error cmd-plugin-remove cmd-plugin-install cmd-plugin-updateavail cmd-plugin-save").on("cmd-plugin-start cmd-plugin-stop cmd-plugin-error cmd-plugin-remove cmd-plugin-install cmd-plugin-updateavail cmd-plugin-save", function(e){
+		//console.log("cmd-plugin-event",e);
 		var resp = e.response.info;
 		if(e.type == "cmd-plugin-start")
 		{

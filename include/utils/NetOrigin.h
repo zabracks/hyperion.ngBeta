@@ -27,9 +27,15 @@ public:
 	///
 	const bool accessAllowed(const QHostAddress& address, const QHostAddress& local);
 
+	///
+	/// @brief Check if address is in subnet of local
+	/// @return True or false
+	///
+	const bool isLocalAddress(const QHostAddress& address, const QHostAddress& local);
+
 	static NetOrigin* getInstance(){ return instance; };
 	static NetOrigin* instance;
-	
+
 private slots:
 	///
 	/// @brief Handle settings update from SettingsManager

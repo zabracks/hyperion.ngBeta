@@ -6,7 +6,7 @@
 #include <QTcpSocket>
 #include <QHostAddress>
 
-JsonClientConnection::JsonClientConnection(QTcpSocket *socket)
+JsonClientConnection::JsonClientConnection(QTcpSocket *socket, const bool& localConnection)
 	: QObject()
 	, _socket(socket)
 	, _receiveBuffer()
@@ -15,7 +15,7 @@ JsonClientConnection::JsonClientConnection(QTcpSocket *socket)
 	connect(_socket, &QTcpSocket::disconnected, this, &JsonClientConnection::disconnected);
 	connect(_socket, &QTcpSocket::readyRead, this, &JsonClientConnection::readRequest);
 	// create a new instance of JsonAPI
-	_jsonAPI = new JsonAPI(socket->peerAddress().toString(), _log, this);
+	_jsonAPI = new JsonAPI(socket->peerAddress().toString(), _log, localConnection, this);
 	// get the callback messages from JsonAPI and send it to the client
 	connect(_jsonAPI,SIGNAL(callbackMessage(QJsonObject)),this,SLOT(sendMessage(QJsonObject)));
 }

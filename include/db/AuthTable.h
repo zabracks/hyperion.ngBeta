@@ -9,18 +9,16 @@
 #include <QUuid>
 
 ///
-/// @brief Authentication table interface, prepares also the Hyperion database for all follow up usage (Init QtSqlConnection) along with db name
+/// @brief Authentication table interface
 ///
 class AuthTable : public DBManager
 {
 
 public:
 	/// construct wrapper with auth table
-	AuthTable(const QString& rootPath)
+	AuthTable(QObject* parent = nullptr)
+		: DBManager(parent)
 	{
-		// Init Hyperion database usage
-		setRootPath(rootPath);
-		setDB("hyperion");
 		// init Auth table
 		setTable("auth");
 		// create table columns

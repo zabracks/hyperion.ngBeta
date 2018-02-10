@@ -35,6 +35,19 @@
 			"required" : true,
 			"default" : true,
 			"propertyOrder" : 3
+		},
+		"localApiAuth" :
+		{
+			"type" : "boolean",
+			"title" : "edt_conf_net_localApiAuth_title",
+			"required" : true,
+			"default" : false,
+			"options": {
+				"dependencies": {
+					"apiAuth": true
+				}
+			},
+			"propertyOrder" : 4
 		}
 	},
 	"additionalProperties" : false

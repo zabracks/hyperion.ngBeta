@@ -20,6 +20,11 @@ public:
 	virtual ~SSDPServer();
 
 	///
+	/// @brief Prepare server after thread start
+	///
+	void initServer();
+
+	///
 	/// @brief Start SSDP
 	/// @return false if already running or bind failure
 	///

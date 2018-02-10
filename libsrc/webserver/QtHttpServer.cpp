@@ -109,7 +109,7 @@ void QtHttpServer::onClientConnected (void) {
 	                    ssl->startServerEncryption ();
 	                }
 	            }
-	            QtHttpClientWrapper * wrapper = new QtHttpClientWrapper (sock, this);
+	            QtHttpClientWrapper * wrapper = new QtHttpClientWrapper (sock, m_netOrigin->isLocalAddress(sock->peerAddress(), sock->localAddress()), this);
 	            m_socksClientsHash.insert (sock, wrapper);
 	            emit clientConnected (wrapper->getGuid ());
 			}

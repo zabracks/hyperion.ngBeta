@@ -19,10 +19,9 @@ class AuthManager : public QObject
 private:
 	friend class HyperionDaemon;
 	/// constructor is private, can be called from HyperionDaemon
-	AuthManager(const QString& rootPath, QObject* parent = 0);
+	AuthManager(QObject* parent = 0);
 
 public:
-	~AuthManager();
 
 	struct AuthDefinition{
 		QString id;
@@ -40,11 +39,15 @@ public:
 
 	///
 	/// @brief Check authorization is required according to the user setting
-	/// @param  user  The username
-	/// @param  pw    The password
-	/// @return       True if authorized else false
+	/// @return       True if authorization required else false
 	///
 	const bool & isAuthRequired();
+
+	///
+	/// @brief Check if authorization is required for local network connections
+	/// @return       True if authorization required else false
+	///
+	const bool & isLocalAuthRequired();
 
 	///
 	/// @brief Create a new token and skip the usual chain
@@ -143,6 +146,9 @@ private:
 
 	/// Reflect state of global auth
 	bool _authRequired;
+
+	/// Reflect state of local auth
+	bool _localAuthRequired;
 
 	/// Timer for counting against pendingRequest timeouts
 	QTimer* _timer;

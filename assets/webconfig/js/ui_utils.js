@@ -91,7 +91,7 @@ function getHashtag()
 	}
 }
 
-function loadContent(event)
+function loadContent(event, forceRefresh)
 {
 	var tag;
 
@@ -104,7 +104,7 @@ function loadContent(event)
 	else
 		tag = getHashtag();
 
-	if(prevTag != tag)
+	if(forceRefresh || prevTag != tag)
 	{
 		prevTag = tag;
 		$("#page-content").off();
@@ -112,6 +112,50 @@ function loadContent(event)
 			if(status == "error")
 				$("#page-content").html('<h3>'+$.i18n('info_404')+'</h3>');
 				removeOverlay();
+		});
+	}
+}
+
+function getInstanceNameByIndex(index)
+{
+	var instData = serverInfo.instance
+	for(var key in instData)
+	{
+		if(instData[key].instance == index)
+			return instData[key].friendly_name;
+	}
+	return "unknown"
+}
+
+function updateHyperionInstanceListing()
+{
+	console.log("updateListing")
+	var data = serverInfo.instance.filter(entry => entry.running);
+	$('#hyp_inst_listing').html("");
+	for(var key in data)
+	{
+		var currInstMarker = (data[key].instance == currentHyperionInstance) ? "component-on" : "";
+
+		var html = '<li id="hyperioninstance_'+data[key].instance+'"> \
+			<a>  \
+				<div>  \
+					<i class="fa fa-circle fa-fw '+currInstMarker+'"></i> \
+					<span>'+data[key].friendly_name+'</span> \
+				</div> \
+			</a> \
+		</li> '
+
+		if(data.length-1 > key)
+			html += '<li class="divider"></li>'
+
+		$('#hyp_inst_listing').append(html);
+
+		$('#hyperioninstance_'+data[key].instance).off().on("click",function(e){
+			var inst = e.currentTarget.id.split("_")[1]
+			requestInstanceSwitch(inst)
+			currentHyperionInstance = inst;
+			currentHyperionInstanceName = getInstanceNameByIndex(inst);
+			updateHyperionInstanceListing()
 		});
 	}
 }

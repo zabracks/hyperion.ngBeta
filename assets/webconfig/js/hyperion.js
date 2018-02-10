@@ -24,13 +24,11 @@ var debugMessagesActive = true;
 var wSess = [];
 var plugins_installed = {};
 var plugins_available = {};
+var currentHyperionInstance = 0;
+var currentHyperionInstanceName = "?";
 
-//comps serverinfo lock
+//comps serverinf
 comps = [];
-compsInited = false;
-
-// prios serverinfo lock
-priosInited = false;
 // token list
 tokenList = {}
 
@@ -195,9 +193,33 @@ function requestTokenDelete(id)
 	sendToHyperion("authorize","deleteToken",'"id":"'+id+'"');
 }
 
+function requestInstanceStartStop(inst, start)
+{
+	if(start)
+		sendToHyperion("instance","startInstance",'"instance": '+inst);
+	else
+		sendToHyperion("instance","stopInstance",'"instance": '+inst);
+}
+
+function requestInstanceDelete(inst)
+{
+	sendToHyperion("instance","deleteInstance",'"instance": '+inst);
+}
+
+function requestInstanceCreate(name)
+{
+	sendToHyperion("instance","createInstance",'"name": "'+name+'"');
+}
+
+function requestInstanceSwitch(inst)
+{
+	sendToHyperion("instance","switchTo",'"instance": '+inst);
+}
+
+
 function requestServerInfo()
 {
-	sendToHyperion("serverinfo","",'"subscribe":["components-update","sessions-update","priorities-update", "imageToLedMapping-update", "adjustment-update", "videomode-update", "effects-update", "settings-update"]');
+	sendToHyperion("serverinfo","",'"subscribe":["components-update","sessions-update","priorities-update", "imageToLedMapping-update", "adjustment-update", "videomode-update", "effects-update", "settings-update", "instance-update"]');
 }
 
 function requestSysInfo()

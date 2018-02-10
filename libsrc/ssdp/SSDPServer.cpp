@@ -74,9 +74,21 @@ static const QString UPNP_MSEARCH_RESPONSE = "HTTP/1.1 200 OK\r\n"
 SSDPServer::SSDPServer(QObject * parent)
 	: QObject(parent)
 	, _log(Logger::getInstance("SSDP"))
-	, _udpSocket(new QUdpSocket(this))
+	, _udpSocket(nullptr)
 	, _running(false)
 {
+
+}
+
+SSDPServer::~SSDPServer()
+{
+	stop();
+}
+
+void SSDPServer::initServer()
+{
+	_udpSocket = new QUdpSocket(this);
+
 	// get system info
 	SysInfo::HyperionSysInfo data = SysInfo::get();
 
@@ -87,11 +99,6 @@ SSDPServer::SSDPServer(QObject * parent)
 	_uuid = Stats::getInstance()->getID();
 
 	connect(_udpSocket, &QUdpSocket::readyRead, this, &SSDPServer::readPendingDatagrams);
-}
-
-SSDPServer::~SSDPServer()
-{
-	stop();
 }
 
 const bool SSDPServer::start()

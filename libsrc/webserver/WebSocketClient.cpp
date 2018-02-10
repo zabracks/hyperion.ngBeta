@@ -10,11 +10,11 @@
 #include <QCryptographicHash>
 #include <QJsonObject>
 
-WebSocketClient::WebSocketClient(QtHttpRequest* request, QTcpSocket* sock, QObject* parent)
+WebSocketClient::WebSocketClient(QtHttpRequest* request, QTcpSocket* sock, const bool& localConnection, QObject* parent)
 	: QObject(parent)
 	, _socket(sock)
 	, _log(Logger::getInstance("WEBSOCKET"))
-	, _hyperion(Hyperion::getInstance())
+//	, _hyperion(Hyperion::getInstance())
 {
 	// connect socket; disconnect handled from QtHttpServer
 	connect(_socket, &QTcpSocket::readyRead , this, &WebSocketClient::handleWebSocketFrame);
@@ -24,7 +24,7 @@ WebSocketClient::WebSocketClient(QtHttpRequest* request, QTcpSocket* sock, QObje
 	const QString client = request->getClientInfo().clientAddress.toString();
 
 	// Json processor
-	_jsonAPI = new JsonAPI(client, _log, this);
+	_jsonAPI = new JsonAPI(client, _log, localConnection, this);
 	connect(_jsonAPI, &JsonAPI::callbackMessage, this, &WebSocketClient::sendMessage);
 
 	Debug(_log, "New connection from %s", QSTRING_CSTR(client));
@@ -240,7 +240,7 @@ void WebSocketClient::handleBinaryMessage(QByteArray &data)
 
 	memcpy(image.memptr(), data.data()+4, imgSize);
 	//_hyperion->registerInput();
-	_hyperion->setInputImage(priority, image, duration_s*1000);
+	//_hyperion->setInputImage(priority, image, duration_s*1000);
 }
 
 qint64 WebSocketClient::sendMessage(QJsonObject obj)

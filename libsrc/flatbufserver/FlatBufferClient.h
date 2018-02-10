@@ -75,14 +75,31 @@ private:
 	///
 	/// @brief Handle the received message
 	///
-	void handleMessage(const flatbuf::HyperionRequest *message);
+	void handleMessage(const hyperionnet::Request * req);
+
+	///
+	/// Register new priority
+	///
+	void handleRegisterCommand(const hyperionnet::Register *regReq);
+
+	///
+	/// @brief Hande Color message
+	///
+	void handleColorCommand(const hyperionnet::Color *colorReq);
 
 	///
 	/// Handle an incoming Image message
 	///
-	/// @param message the incoming message
+	/// @param image the incoming image
 	///
-	void handleImageCommand(const flatbuf::ImageRequest * message);
+	void handleImageCommand(const hyperionnet::Image *image);
+
+	///
+	/// @brief Handle clear command
+	///
+	/// @param clear the incoming clear request
+	///
+	void handleClearCommand(const hyperionnet::Clear *clear);
 
 	///
 	/// Send handle not implemented

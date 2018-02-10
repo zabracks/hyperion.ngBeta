@@ -31,8 +31,9 @@ $(document).ready( function() {
 		$('.tktbody').html("");
 		for(key in tokenList)
 		{
+			var lastUse = (tokenList[key].last_use) ? tokenList[key].last_use : "-";
 			var btn = '<button id="tok'+tokenList[key].id+'" type="button" class="btn btn-danger">'+$.i18n('general_btn_delete')+'</button>';
-			$('.tktbody').append(createTableRow([tokenList[key].comment, tokenList[key].last_use, btn], false, true));
+			$('.tktbody').append(createTableRow([tokenList[key].comment, lastUse, btn], false, true));
 			$('#tok'+tokenList[key].id).off().on('click', handleDeleteToken);
 		}
 	}
@@ -58,16 +59,66 @@ $(document).ready( function() {
 		$('#btn_create_tok').attr('disabled', true)
 	});
 	$('#tok_comment').off().on('input',function(e) {
-		(e.currentTarget.value.length >= 10) ? $('#btn_create_tok').attr('disabled', false) : $('#btn_create_tok').attr('disabled', true);
+		(e.currentTarget.value.length >= 5) ? $('#btn_create_tok').attr('disabled', false) : $('#btn_create_tok').attr('disabled', true);
 	});
-	$(hyperion).off().on("cmd-authorize-createToken", function(event) {
+	$(hyperion).off("cmd-authorize-createToken").on("cmd-authorize-createToken", function(event) {
 		var val = event.response.info;
 		showInfoDialog("newToken",$.i18n('conf_general_tok_diaTitle'),$.i18n('conf_general_tok_diaMsg')+'<br><div style="font-weight:bold">'+val.token+'</div>')
 		tokenList.push(val)
 		buildTokenList()
 	});
 
+	function handleInstanceStartStop(e)
+	{
+		var inst = e.currentTarget.id.split("_")[1];
+		var start = (e.currentTarget.className == "btn btn-danger")
+		requestInstanceStartStop(inst, start)
+	}
 
+	function handleInstanceDelete(e)
+	{
+		var inst = e.currentTarget.id.split("_")[1];
+		showInfoDialog('delplug',$.i18n('conf_general_inst_delreq_h'),$.i18n('conf_general_inst_delreq_t',getInstanceNameByIndex(inst)));
+		$("#id_btn_yes").off().on('click', function(){
+			requestInstanceDelete(inst)
+		});
+	}
+
+	function buildInstanceList()
+	{
+		var inst = serverInfo.instance
+		$('.itbody').html("");
+		for(var key in inst)
+		{
+			var startBtnColor = inst[key].running ? "success" : "danger";
+			var startBtnText = inst[key].running ? $.i18n('general_btn_stop') : $.i18n('general_btn_start');
+			var startBtn = "-"
+			var delBtn = "-";
+			if(inst[key].instance > 0)
+			{
+				delBtn = '<button id="instdel_'+inst[key].instance+'" type="button" class="btn btn-danger">'+$.i18n('general_btn_delete')+'</button>';
+				startBtn = '<button id="inst_'+inst[key].instance+'" type="button" class="btn btn-'+startBtnColor+'">'+startBtnText+'</button>';
+			}
+			$('.itbody').append(createTableRow([inst[key].friendly_name, startBtn, delBtn], false, true));
+			$('#inst_'+inst[key].instance).off().on('click', handleInstanceStartStop);
+			$('#instdel_'+inst[key].instance).off().on('click', handleInstanceDelete);
+		}
+	}
+
+	createTable('ithead', 'itbody', 'itable');
+	$('.ithead').html(createTableRow([$.i18n('conf_general_inst_namehead'), $.i18n('conf_general_inst_actionhead'), $.i18n('general_btn_delete')], true, true));
+	buildInstanceList();
+
+	$('#inst_name').off().on('input',function(e) {
+		(e.currentTarget.value.length >= 5) ? $('#btn_create_inst').attr('disabled', false) : $('#btn_create_inst').attr('disabled', true);
+	});
+	$('#btn_create_inst').off().on('click',function(e) {
+		requestInstanceCreate($('#inst_name').val());
+	});
+
+	$(hyperion).off("instance-updated").on("instance-updated", function(event) {
+		buildInstanceList()
+	});
 
 	//import
 	function dis_imp_btn(state)
@@ -150,6 +201,7 @@ $(document).ready( function() {
 	{
 		createHint("intro", $.i18n('conf_general_intro'), "editor_container");
 		createHint("intro", $.i18n('conf_general_tok_desc'), "tok_desc_cont");
+		createHint("intro", $.i18n('conf_general_inst_desc'), "inst_desc_cont");
 	}
 
 	removeOverlay();

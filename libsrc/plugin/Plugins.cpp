@@ -17,7 +17,7 @@ Plugins::Plugins(Hyperion* hyperion, const quint8& instance)
 	, _log(Logger::getInstance("PLUGINS"))
 	, _hyperion(hyperion)
 	, _prioMuxer(hyperion->getMuxerInstance())
-	, _PDB(new PluginTable(instance))
+	, _PDB(new PluginTable(instance, this))
 	, _files(_hyperion->getRootPath(), _PDB)
 {
 	// more meta register
@@ -43,7 +43,6 @@ Plugins::~Plugins()
 			plug->forceExit();
 
 	}
-	delete _PDB;
 }
 
 bool Plugins::isPluginAutoUpdateEnabled(const QString& id) const

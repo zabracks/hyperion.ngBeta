@@ -14,9 +14,21 @@
 
 WebServer::WebServer(const QJsonDocument& config, QObject * parent)
 	:  QObject(parent)
+	, _config(config)
 	, _log(Logger::getInstance("WEBSERVER"))
-	, _server(new QtHttpServer (this))
+	, _server()
 {
+
+}
+
+WebServer::~WebServer()
+{
+	stop();
+}
+
+void WebServer::initServer()
+{
+	_server = new QtHttpServer (this);
 	_server->setServerName (QStringLiteral ("Hyperion Webserver"));
 
 	connect (_server, &QtHttpServer::started, this, &WebServer::onServerStarted);
@@ -27,18 +39,14 @@ WebServer::WebServer(const QJsonDocument& config, QObject * parent)
 	_staticFileServing = new StaticFileServing (this);
 	connect(_server, &QtHttpServer::requestNeedsReply, _staticFileServing, &StaticFileServing::onRequestNeedsReply);
 
-	Debug(_log, "Instance created");
 	// init
-	handleSettingsUpdate(settings::WEBSERVER, config);
-}
-
-WebServer::~WebServer()
-{
-	stop();
+	handleSettingsUpdate(settings::WEBSERVER, _config);
 }
 
 void WebServer::onServerStarted (quint16 port)
 {
+	_inited= true;
+
 	Info(_log, "Started on port %d name '%s'", port ,_server->getServerName().toStdString().c_str());
 
 	if(_serviceRegister == nullptr)
@@ -96,7 +104,8 @@ void WebServer::handleSettingsUpdate(const settings::type& type, const QJsonDocu
 		}
 
 		// eval if the port is available, will be incremented if not
-		NetUtils::portAvailable(_port, _log);
+		if(!_server->isListening())
+			NetUtils::portAvailable(_port, _log);
 
 		start();
 	}
@@ -110,11 +119,6 @@ void WebServer::start()
 void WebServer::stop()
 {
 	_server->stop();
-}
-
-const bool WebServer::isListening()
-{
-	return _server->isListening();
 }
 
 void WebServer::setSSDPDescription(const QString & desc)

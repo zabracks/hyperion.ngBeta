@@ -10,6 +10,7 @@
 
 #include <utils/ColorRgb.h>
 #include <effectengine/EffectDefinition.h>
+#include <hyperion/HyperionIManager.h>
 
 #include "hyperiond.h"
 #include "systray.h"
@@ -21,12 +22,12 @@ SysTray::SysTray(HyperionDaemon *hyperiond, quint16 webPort)
 	, _webPort(webPort)
 {
 	Q_INIT_RESOURCE(resource);
-	_hyperion = Hyperion::getInstance();
+	_hyperion = HyperionIManager::getInstance()->getHyperionInstance();
 	createTrayIcon();
 
 	connect(_trayIcon, SIGNAL(activated(QSystemTrayIcon::ActivationReason)),
 		this, SLOT(iconActivated(QSystemTrayIcon::ActivationReason)));
- 
+
  	connect(&_colorDlg, SIGNAL(currentColorChanged(const QColor&)), this, SLOT(setColor(const QColor &)));
 	QIcon icon(":/hyperion-icon.png");
 	_trayIcon->setIcon(icon);
@@ -88,7 +89,7 @@ void SysTray::createTrayIcon()
 		connect(efxAction, SIGNAL(triggered()), this, SLOT(setEffect()));
 		_trayIconEfxMenu->addAction(efxAction);
 	}
-	
+
 	_trayIconMenu->addAction(settingsAction);
 	_trayIconMenu->addSeparator();
 	_trayIconMenu->addAction(colorAction);
@@ -107,7 +108,7 @@ void SysTray::setColor(const QColor & color)
 	rgbColor.red   = color.red();
 	rgbColor.green = color.green();
  	rgbColor.blue  =color.blue();
- 
+
  	_hyperion->setColor(1 ,rgbColor, 0);
 }
 

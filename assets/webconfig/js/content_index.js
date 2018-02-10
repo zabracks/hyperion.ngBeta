@@ -1,5 +1,6 @@
+var instNameInit = false
+
 $(document).ready( function() {
-	var uiLock = false;
 
 	loadContentTo("#container_connection_lost","connection_lost");
 	loadContentTo("#container_restart","restart");
@@ -7,30 +8,37 @@ $(document).ready( function() {
 
 	$(hyperion).on("cmd-serverinfo",function(event){
 		serverInfo = event.response.info;
-		// protect components from serverinfo updates
-		if(!compsInited)
-		{
-			comps = event.response.info.components
-			compsInited = true;
-		}
+		// comps
+		comps = event.response.info.components
 
-		if(!priosInited)
-		{
-			priosInited = true;
-		}
 		$(hyperion).trigger("ready");
 
-		if (serverInfo.hyperion.config_modified)
-			$("#hyperion_reload_notify").fadeIn("fast");
-		else
-			$("#hyperion_reload_notify").fadeOut("fast");
+		comps.forEach( function(obj) {
+			if (obj.name == "ALL")
+			{
+				if(obj.enabled)
+					$("#hyperion_disabled_notify").fadeOut("fast");
+				else
+					$("#hyperion_disabled_notify").fadeIn("fast");
+			}
+		});
 
-		if (serverInfo.hyperion.enabled)
-			$("#hyperion_disabled_notify").fadeOut("fast");
+		// determine button visibility
+		var running = serverInfo.instance.filter(entry => entry.running);
+		if(running.length > 1)
+			$('#btn_hypinstanceswitch').toggle(true)
 		else
-			$("#hyperion_disabled_notify").fadeIn("fast");
+			$('#btn_hypinstanceswitch').toggle(false)
+		// update listing at button
+		updateHyperionInstanceListing()
+		if(!instNameInit)
+		{
+			currentHyperionInstanceName = getInstanceNameByIndex(0);
+			instNameInit = true;
+		}
 
-		if (!serverInfo.hyperion.config_writeable)
+
+/*		Still in translation files and info dialog
 		{
 			showInfoDialog('uilock',$.i18n('InfoDialog_nowrite_title'),$.i18n('InfoDialog_nowrite_text'));
 			$('#wrapper').toggle(false);
@@ -42,7 +50,7 @@ $(document).ready( function() {
 			$('#wrapper').toggle(true);
 			uiLock = false;
 		}
-
+*/
 		updateSessions();
 	}); // end cmd-serverinfo
 
@@ -50,6 +58,7 @@ $(document).ready( function() {
 		serverInfo.sessions = event.response.data;
 		updateSessions();
 	});
+
 /*
 	$(hyperion).on("cmd-authorize-event", function(event) {
 		console.log(event.response)
@@ -71,7 +80,7 @@ $(document).ready( function() {
 		requestServerInfo();
 	});
 
-	$(hyperion).one("cmd-plugin-getInitData", function(event) {
+	$(hyperion).on("cmd-plugin-getInitData", function(event) {
 		plugins_installed = event.response.info.installedPlugins;
 		plugins_available = event.response.info.availablePlugins;
 		requestTokenInfo();
@@ -91,7 +100,7 @@ $(document).ready( function() {
 		schema = serverSchema.properties;
 	});
 
-	$(hyperion).one("cmd-config-getconfig", function(event) {
+	$(hyperion).on("cmd-config-getconfig", function(event) {
 		serverConfig = event.response.info;
 		requestSysInfo();
 
@@ -128,7 +137,7 @@ $(document).ready( function() {
 		// notfication in index
 		if (obj.name == "ALL")
 		{
-			if(obj.enable)
+			if(obj.enabled)
 				$("#hyperion_disabled_notify").fadeOut("fast");
 			else
 				$("#hyperion_disabled_notify").fadeIn("fast");
@@ -143,12 +152,52 @@ $(document).ready( function() {
 		$(hyperion).trigger("components-updated");
 	});
 
-	$(hyperion).on("cmd-effects-update", function(event){
-		serverInfo.effects = event.response.data.effects
+	$(hyperion).on("cmd-instance-update", function(event) {
+		serverInfo.instance = event.response.data
+		var avail = event.response.data;
+		// notify the update
+		$(hyperion).trigger("instance-updated");
+
+		// if our current instance is no longer available we are at instance 0 again.
+		var isInData = false;
+		for(var key in avail)
+		{
+			if(avail[key].instance == currentHyperionInstance && avail[key].running)
+			{
+				isInData = true;
+			}
+		}
+
+		if(!isInData)
+		{
+			currentHyperionInstance = 0;
+			currentHyperionInstanceName = getInstanceNameByIndex(0);
+			requestServerConfig();
+			setTimeout(requestServerInfo,100)
+			setTimeout(requestPluginsInitData,200)
+			setTimeout(loadContent,300, undefined, true)
+		}
+
+		// determine button visibility
+		var running = serverInfo.instance.filter(entry => entry.running);
+		if(running.length > 1)
+			$('#btn_hypinstanceswitch').toggle(true)
+		else
+			$('#btn_hypinstanceswitch').toggle(false)
+
+		// update listing for button
+		updateHyperionInstanceListing()
 	});
 
-	$("#btn_hyperion_reload").on("click", function(){
-		initRestart();
+	$(hyperion).on("cmd-instance-switchTo", function(event){
+		requestServerConfig();
+		setTimeout(requestServerInfo,200)
+		setTimeout(requestPluginsInitData,400)
+		setTimeout(loadContent,400, undefined, true)
+	});
+
+	$(hyperion).on("cmd-effects-update", function(event){
+		serverInfo.effects = event.response.data.effects
 	});
 
 	$(".mnava").bind('click.menu', function(e){
