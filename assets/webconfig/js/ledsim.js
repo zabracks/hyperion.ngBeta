@@ -56,6 +56,11 @@ $(document).ready(function() {
 				setStorage("ledsim_height", $("#ledsim_dialog").outerHeight());
 			}
 		});
+		// apply new serverinfos
+		$(hyperion).on("cmd-config-getconfig",function(event){
+			leds = event.response.info.leds;
+			updateLedLayout();
+		});
 	});
 
 	function updateLedLayout()
