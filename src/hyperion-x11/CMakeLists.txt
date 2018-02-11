@@ -5,10 +5,8 @@ find_package(Qt5Widgets REQUIRED)
 find_package(X11 REQUIRED)
 
 include_directories(
-	${CMAKE_CURRENT_BINARY_DIR}/../../libsrc/protoserver
 	${CMAKE_CURRENT_BINARY_DIR}/../../libsrc/flatbufserver
 	${X11_INCLUDES}
-	${PROTOBUF_INCLUDE_DIRS}
 	${FLATBUFFERS_INCLUDE_DIRS}
 )
 
@@ -31,7 +29,6 @@ target_link_libraries(${PROJECT_NAME}
 	blackborder
 	commandline
 	hyperion-utils
-	protoclient
 	flatbufserver
 	flatbuffers
 	x11-grabber

@@ -3,11 +3,13 @@
 #include <QCoreApplication>
 #include <QImage>
 
-#include <protoserver/ProtoConnectionWrapper.h>
 #include "DispmanxWrapper.h"
 
 #include "HyperionConfig.h"
 #include <commandline/Parser.h>
+
+//flatbuf sending
+#include <flatbufserver/FlatBufferConnection.h>
 
 // ssdp discover
 #include <ssdp/SSDPDiscover.h>
@@ -108,11 +110,11 @@ int main(int argc, char ** argv)
 					address = argAddress.value(parser);
 				}
 			}
-			// Create the Proto-connection with hyperiond
-			ProtoConnectionWrapper protoWrapper(address, argPriority.getInt(parser), 1000, parser.isSet(argSkipReply));
+			// Create the Flabuf-connection
+			FlatBufferConnection flatbuf("Dispmanx Standalone", address, argPriority.getInt(parser), parser.isSet(argSkipReply));
 
-			// Connect the screen capturing to the proto processing
-			QObject::connect(&dispmanxWrapper, SIGNAL(sig_screenshot(const Image<ColorRgb> &)), &protoWrapper, SLOT(receiveImage(Image<ColorRgb>)));
+			// Connect the screen capturing to flatbuf connection processing
+			QObject::connect(&dispmanxWrapper, SIGNAL(sig_screenshot(const Image<ColorRgb> &)), &flatbuf, SLOT(setImage(Image<ColorRgb>)));
 
 			// Start the capturing
 			dispmanxWrapper.start();

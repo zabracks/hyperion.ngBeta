@@ -20,7 +20,6 @@
 #include <utils/JsonUtils.h>
 
 #include <jsonserver/JsonServer.h>
-#include <protoserver/ProtoServer.h>
 #include <udplistener/UDPListener.h>
 #include <webserver/WebServer.h>
 #include <utils/Stats.h>
@@ -63,7 +62,6 @@ HyperionDaemon::HyperionDaemon(const QString rootPath, QObject *parent, const bo
 	, _pyInit(new PythonInit())
 	, _webserver(nullptr)
 	, _jsonServer(nullptr)
-	, _protoServer(nullptr)
 	, _udpListener(nullptr)
 	, _v4l2Grabbers()
 	, _dispmanx(nullptr)
@@ -159,7 +157,6 @@ void HyperionDaemon::freeObjects()
 {
 	// destroy network first as a client might want to access Hyperion
 	delete _jsonServer;
-	delete _protoServer;
 	_flatBufferServer->thread()->quit();
 	_flatBufferServer->thread()->wait(1000);
 	//ssdp before webserver
@@ -190,7 +187,6 @@ void HyperionDaemon::freeObjects()
 	_osxGrabber     = nullptr;
 	_webserver      = nullptr;
 	_jsonServer     = nullptr;
-	_protoServer    = nullptr;
 	_udpListener    = nullptr;
 	_stats          = nullptr;
 }
@@ -200,10 +196,6 @@ void HyperionDaemon::startNetworkServices()
 	// Create Json server
 	_jsonServer = new JsonServer(getSetting(settings::JSONSERVER));
 	connect(this, &HyperionDaemon::settingsChanged, _jsonServer, &JsonServer::handleSettingsUpdate);
-
-	// Create Proto server
-	_protoServer = new ProtoServer(getSetting(settings::PROTOSERVER));
-	connect(this, &HyperionDaemon::settingsChanged, _protoServer, &ProtoServer::handleSettingsUpdate);
 
 	// Create FlatBuffer server in thread
 	_flatBufferServer = new FlatBufferServer(getSetting(settings::FLATBUFSERVER));
@@ -229,8 +221,7 @@ void HyperionDaemon::startNetworkServices()
 	connect(this, &HyperionDaemon::settingsChanged, _webserver, &WebServer::handleSettingsUpdate);
 	wsThread->start();
 
-	// TODO replace proto config with flatbuf config
-	_ssdp = new SSDPHandler(_webserver, getSetting(settings::PROTOSERVER).object()["port"].toInt());
+	_ssdp = new SSDPHandler(_webserver, getSetting(settings::FLATBUFSERVER).object()["port"].toInt());
 	QThread* ssdpThread = new QThread(this);
 	_ssdp->moveToThread(ssdpThread);
 	connect( ssdpThread, &QThread::started, _ssdp, &SSDPHandler::initServer );

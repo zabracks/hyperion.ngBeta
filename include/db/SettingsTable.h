@@ -110,7 +110,7 @@ public:
 		// list of global settings
 		QStringList list;
 		// server port services
-		list << "jsonServer" << "flatbufServer" << "protoServer" << "udpListener" << "webConfig" << "network"
+		list << "jsonServer" << "flatbufServer" << "udpListener" << "webConfig" << "network"
 		// capture
 		<< "framegrabber" << "grabberV4L2"
 		// other

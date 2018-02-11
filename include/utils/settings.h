@@ -23,7 +23,6 @@ enum type  {
 	LEDCONFIG,
 	LEDS,
 	LOGGER,
-	PROTOSERVER,
 	SMOOTHING,
 	UDPLISTENER,
 	WEBSERVER,
@@ -57,7 +56,6 @@ inline QString typeToString(const type& type)
 		case LEDCONFIG:     return "ledConfig";
 		case LEDS:          return "leds";
 		case LOGGER:        return "logger";
-		case PROTOSERVER:   return "protoServer";
 		case SMOOTHING:     return "smoothing";
 		case UDPLISTENER:   return "udpListener";
 		case WEBSERVER:     return "webConfig";
@@ -90,7 +88,6 @@ inline type stringToType(const QString& type)
 	if (type == "ledConfig")            return LEDCONFIG;
 	if (type == "leds")                 return LEDS;
 	if (type == "logger")               return LOGGER;
-	if (type == "protoServer")          return PROTOSERVER;
 	if (type == "smoothing")            return SMOOTHING;
 	if (type == "udpListener")          return UDPLISTENER;
 	if (type == "webConfig")            return WEBSERVER;

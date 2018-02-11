@@ -48,7 +48,6 @@
 class HyperionIManager;
 class SysTray;
 class JsonServer;
-class ProtoServer;
 class UDPListener;
 class Stats;
 class BonjourBrowserWrapper;
@@ -129,7 +128,6 @@ private:
 	PythonInit*            _pyInit;
 	WebServer*             _webserver;
 	JsonServer*            _jsonServer;
-	ProtoServer*           _protoServer;
 	UDPListener*           _udpListener;
 	std::vector<V4L2Wrapper*>  _v4l2Grabbers;
 	DispmanxWrapper*       _dispmanx;

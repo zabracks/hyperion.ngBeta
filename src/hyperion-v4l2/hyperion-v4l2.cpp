@@ -12,9 +12,8 @@
 // grabber includes
 #include "grabber/V4L2Grabber.h"
 
-// proto includes
-#include "protoserver/ProtoConnection.h"
-#include "protoserver/ProtoConnectionWrapper.h"
+//flatbuf sending
+#include <flatbufserver/FlatBufferConnection.h>
 
 // hyperion-v4l2 includes
 #include "ScreenshotHandler.h"
@@ -206,8 +205,13 @@ int main(int argc, char** argv)
 					address = argAddress.value(parser);
 				}
 			}
-			ProtoConnectionWrapper protoWrapper(address, argPriority.getInt(parser), 1000, parser.isSet(argSkipReply));
-			QObject::connect(&grabber, SIGNAL(newFrame(Image<ColorRgb>)), &protoWrapper, SLOT(receiveImage(Image<ColorRgb>)));
+
+			// Create the Flabuf-connection
+			FlatBufferConnection flatbuf("V4L2 Standalone", address, argPriority.getInt(parser), parser.isSet(argSkipReply));
+
+			// Connect the screen capturing to flatbuf connection processing
+			QObject::connect(&grabber, SIGNAL(newFrame(const Image<ColorRgb> &)), &flatbuf, SLOT(setImage(Image<ColorRgb>)));
+
 			if (grabber.start())
 				QCoreApplication::exec();
 			grabber.stop();

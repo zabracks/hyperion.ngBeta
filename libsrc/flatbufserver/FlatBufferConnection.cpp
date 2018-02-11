@@ -13,6 +13,7 @@ FlatBufferConnection::FlatBufferConnection(const QString& origin, const QString 
 	, _priority(priority)
 	, _prevSocketState(QAbstractSocket::UnconnectedState)
 	, _log(Logger::getInstance("FLATBUFCONNECTION"))
+	, _registered(false)
 {
 	QStringList parts = address.split(":");
 	if (parts.size() != 2)
@@ -146,29 +147,32 @@ void FlatBufferConnection::sendMessage(const uint8_t* buffer, uint32_t size)
 	// print out connection message only when state is changed
 	if (_socket.state() != _prevSocketState )
 	{
-	  switch (_socket.state() )
-	  {
-		case QAbstractSocket::UnconnectedState:
-		  Info(_log, "No connection to Hyperion: %s:%d", _host.toStdString().c_str(), _port);
-		  break;
-
-		case QAbstractSocket::ConnectedState:
-		  Info(_log, "Connected to Hyperion: %s:%d", _host.toStdString().c_str(), _port);
-		  break;
-
-		default:
-		  Debug(_log, "Connecting to Hyperion: %s:%d", _host.toStdString().c_str(), _port);
-		  break;
+		switch (_socket.state() )
+		{
+			case QAbstractSocket::UnconnectedState:
+				Info(_log, "No connection to Hyperion: %s:%d", _host.toStdString().c_str(), _port);
+				break;
+			case QAbstractSocket::ConnectedState:
+				Info(_log, "Connected to Hyperion: %s:%d", _host.toStdString().c_str(), _port);
+				_registered = false;
+				break;
+			default:
+				Debug(_log, "Connecting to Hyperion: %s:%d", _host.toStdString().c_str(), _port);
+				break;
 	  }
 	  _prevSocketState = _socket.state();
-	  if(_socket.state() == QAbstractSocket::ConnectedState)
-		  // do register
-		  setRegister(_origin, _priority);
 	}
 
 
 	if (_socket.state() != QAbstractSocket::ConnectedState)
 	{
+		return;
+	}
+
+	if(!_registered)
+	{
+		_registered = true;
+		setRegister(_origin, _priority);
 		return;
 	}
 
@@ -182,11 +186,8 @@ void FlatBufferConnection::sendMessage(const uint8_t* buffer, uint32_t size)
 	int count = 0;
 	count += _socket.write(reinterpret_cast<const char *>(header), 4);
 	count += _socket.write(reinterpret_cast<const char *>(buffer), size);
-	if (!_socket.waitForBytesWritten())
-	{
-		Error(_log, "Error while writing data to host");
-		return;
-	}
+	_socket.flush();
+	_builder.Clear();
 }
 
 bool FlatBufferConnection::parseReply(const hyperionnet::Reply *reply)

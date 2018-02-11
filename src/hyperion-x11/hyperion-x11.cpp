@@ -4,12 +4,11 @@
 #include <QImage>
 
 #include <commandline/Parser.h>
-#include "protoserver/ProtoConnectionWrapper.h"
 #include "X11Wrapper.h"
 #include "HyperionConfig.h"
 
 //flatbuf sending
-#include "flatbufserver/FlatBufferConnection.h"
+#include <flatbufserver/FlatBufferConnection.h>
 
 // ssdp discover
 #include <ssdp/SSDPDiscover.h>
@@ -97,15 +96,10 @@ int main(int argc, char ** argv)
 				}
 			}
 			// Create the Flabuf-connection
-			//FlatBufferConnection flatbuf("X11 Standalone", address, argPriority.getInt(parser), parser.isSet(argSkipReply));
-			ProtoConnectionWrapper protoWrapper(address, argPriority.getInt(parser), 1000, parser.isSet(argSkipReply));
+			FlatBufferConnection flatbuf("X11 Standalone", address, argPriority.getInt(parser), parser.isSet(argSkipReply));
 
-			// Connect the screen capturing to the proto processing
-			//QObject::connect(&x11Wrapper, SIGNAL(sig_screenshot(const Image<ColorRgb> &)), &flatbuf, SLOT(setImage(Image<ColorRgb>)));
-			QObject::connect(&x11Wrapper, SIGNAL(sig_screenshot(const Image<ColorRgb> &)), &protoWrapper, SLOT(receiveImage(Image<ColorRgb>)));
-
-			// Connect the vodeMode to the proto processing
-			//QObject::connect(&flatbuf, SIGNAL(setVideoMode(VideoMode)), &x11Wrapper, SLOT(setVideoMode(VideoMode)));
+			// Connect the screen capturing to flatbuf connection processing
+			QObject::connect(&x11Wrapper, SIGNAL(sig_screenshot(const Image<ColorRgb> &)), &flatbuf, SLOT(setImage(Image<ColorRgb>)));
 
 			// Start the capturing
 			x11Wrapper.start();

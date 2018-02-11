@@ -135,4 +135,6 @@ private:
 
 	Logger * _log;
 	flatbuffers::FlatBufferBuilder _builder;
+
+	bool _registered;
 };
