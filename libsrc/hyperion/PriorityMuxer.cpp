@@ -169,7 +169,6 @@ const bool PriorityMuxer::setInput(const int priority, const std::vector<ColorRg
 		Error(_log,"setInput() used without registerInput() for priority '%d', probably the priority reached timeout",priority);
 		return false;
 	}
-
 	// calc final timeout
 	if(timeout_ms > 0)
 		timeout_ms = QDateTime::currentMSecsSinceEpoch() + timeout_ms;
@@ -302,8 +301,8 @@ void PriorityMuxer::setCurrentTime(void)
 			if(infoIt->timeoutTime_ms >= -1)
 				newPriority = qMin(newPriority, infoIt->priority);
 
-			// call timeTrigger when effect or color is running with timeout > -1, blacklist prio 255
-			if(infoIt->priority < 254 && infoIt->timeoutTime_ms > -1 && (infoIt->componentId == hyperion::COMP_EFFECT || infoIt->componentId == hyperion::COMP_COLOR))
+			// call timeTrigger when effect or color is running with timeout > 0, blacklist prio 255
+			if(infoIt->priority < 254 && infoIt->timeoutTime_ms > 0 && (infoIt->componentId == hyperion::COMP_EFFECT || infoIt->componentId == hyperion::COMP_COLOR))
 			{
 				emit signalTimeTrigger(); // as signal to prevent Threading issues
 			}

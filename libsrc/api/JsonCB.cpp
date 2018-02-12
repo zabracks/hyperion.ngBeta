@@ -193,7 +193,7 @@ void JsonCB::handlePriorityUpdate()
 		const Hyperion::InputInfo priorityInfo = _prioMuxer->getInputInfo(priority);
 		QJsonObject item;
 		item["priority"] = priority;
-		if (int(priorityInfo.timeoutTime_ms - now) > -1 )
+		if (priorityInfo.timeoutTime_ms > 0 )
 		{
 			item["duration_ms"] = int(priorityInfo.timeoutTime_ms - now);
 		}

@@ -314,105 +314,20 @@ void JsonAPI::handleEffectCommand(const QJsonObject& message, const QString& com
 
 void JsonAPI::handleCreateEffectCommand(const QJsonObject& message, const QString &command, const int tan)
 {
-	if (!message["args"].toObject().isEmpty())
-	{
-		QString scriptName;
-		(message["script"].toString().mid(0, 1)  == ":" )
-			? scriptName = ":/effects//" + message["script"].toString().mid(1)
-			: scriptName = message["script"].toString();
-
-		std::list<EffectSchema> effectsSchemas = _hyperion->getEffectSchemas();
-		std::list<EffectSchema>::iterator it = std::find_if(effectsSchemas.begin(), effectsSchemas.end(), find_schema(scriptName));
-
-		if (it != effectsSchemas.end())
-		{
-			if(!JsonUtils::validate("JsonRpc@"+_peerAddress, message["args"].toObject(), it->schemaFile, _log))
-			{
-				sendErrorReply("Error during arg validation against schema, please consult the Hyperion Log", command, tan);
-				return;
-			}
-
-			QJsonObject effectJson;
-			QJsonArray effectArray;
-			effectArray = _hyperion->getQJsonConfig()["effects"].toObject()["paths"].toArray();
-
-			if (effectArray.size() > 0)
-			{
-				if (message["name"].toString().trimmed().isEmpty() || message["name"].toString().trimmed().startsWith("."))
-				{
-					sendErrorReply("Can't save new effect. Effect name is empty or begins with a dot.", command, tan);
-					return;
-				}
-
-				effectJson["name"] = message["name"].toString();
-				effectJson["script"] = message["script"].toString();
-				effectJson["args"] = message["args"].toObject();
-
-				std::list<EffectDefinition> availableEffects = _hyperion->getEffects();
-				std::list<EffectDefinition>::iterator iter = std::find_if(availableEffects.begin(), availableEffects.end(), find_effect(message["name"].toString()));
-
-				QFileInfo newFileName;
-				if (iter != availableEffects.end())
-				{
-					newFileName.setFile(iter->file);
-					if (newFileName.absoluteFilePath().mid(0, 1)  == ":")
-					{
-						sendErrorReply("The effect name '" + message["name"].toString() + "' is assigned to an internal effect. Please rename your effekt.", command, tan);
-						return;
-					}
-				} else
-				{
-					//QString f = FileUtils::convertPath(effectArray[0].toString() + "/" + message["name"].toString().replace(QString(" "), QString("")) + QString(".json"));
-					//newFileName.setFile(f);
-				}
-
-				if(!JsonUtils::write(newFileName.absoluteFilePath(), effectJson, _log))
-				{
-					sendErrorReply("Error while saving effect, please check the Hyperion Log", command, tan);
-					return;
-				}
-
-				Info(_log, "Reload effect list");
-				_hyperion->reloadEffects();
-				sendSuccessReply(command, tan);
-			} else
-			{
-				sendErrorReply("Can't save new effect. Effect path empty", command, tan);
-				return;
-			}
-		} else
-			sendErrorReply("Missing schema file for Python script " + message["script"].toString(), command, tan);
-	} else
-		sendErrorReply("Missing or empty Object 'args'", command, tan);
+	QString resultMsg;
+	if(_hyperion->saveEffect(message, resultMsg))
+		sendSuccessReply(command, tan);
+	else
+		sendErrorReply(resultMsg, command, tan);
 }
 
 void JsonAPI::handleDeleteEffectCommand(const QJsonObject& message, const QString& command, const int tan)
 {
-	QString effectName = message["name"].toString();
-	std::list<EffectDefinition> effectsDefinition = _hyperion->getEffects();
-	std::list<EffectDefinition>::iterator it = std::find_if(effectsDefinition.begin(), effectsDefinition.end(), find_effect(effectName));
-
-	if (it != effectsDefinition.end())
-	{
-		QFileInfo effectConfigurationFile(it->file);
-		if (effectConfigurationFile.absoluteFilePath().mid(0, 1)  != ":" )
-		{
-			if (effectConfigurationFile.exists())
-			{
-				bool result = QFile::remove(effectConfigurationFile.absoluteFilePath());
-				if (result)
-				{
-					Info(_log, "Reload effect list");
-					_hyperion->reloadEffects();
-					sendSuccessReply(command, tan);
-				} else
-					sendErrorReply("Can't delete effect configuration file: " + effectConfigurationFile.absoluteFilePath() + ". Please check permissions", command, tan);
-			} else
-				sendErrorReply("Can't find effect configuration file: " + effectConfigurationFile.absoluteFilePath(), command, tan);
-		} else
-			sendErrorReply("Can't delete internal effect: " + message["name"].toString(), command, tan);
-	} else
-		sendErrorReply("Effect " + message["name"].toString() + " not found", command, tan);
+	QString resultMsg;
+	if(_hyperion->deleteEffect(message["name"].toString(), resultMsg))
+		sendSuccessReply(command, tan);
+	else
+		sendErrorReply(resultMsg, command, tan);
 }
 
 void JsonAPI::handleSysInfoCommand(const QJsonObject&, const QString& command, const int tan)
@@ -465,7 +380,7 @@ void JsonAPI::handleServerInfoCommand(const QJsonObject& message, const QString&
 		const Hyperion::InputInfo & priorityInfo = _hyperion->getPriorityInfo(priority);
 		QJsonObject item;
 		item["priority"] = priority;
-		if (int(priorityInfo.timeoutTime_ms - now) > -1 )
+		if (priorityInfo.timeoutTime_ms > 0 )
 		{
 			item["duration_ms"] = int(priorityInfo.timeoutTime_ms - now);
 		}

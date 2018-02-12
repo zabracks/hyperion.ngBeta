@@ -54,11 +54,6 @@ public:
 	const QString getId(){ return _id; };
 	/// is true when a error occurred
 	bool hasError() const { return _error; };
-	/// set the remove flag
-	void setRemoveFlag(){ _remove = true; };
-	/// get the remove flag
-	bool hasRemoveFlag() const { return _remove; };
-
 private:
 	PyThreadState* _state;
 	/// The plugins instance
@@ -79,8 +74,6 @@ private:
 	std::string _pythonPath;
 	/// true if error occurred
 	bool _error = false;
-	/// true if plugin should be removed after stop
-	bool _remove = false;
 	/// true when interrupt requested
 	bool _interrupt = false;
 

@@ -62,7 +62,7 @@ Hyperion::Hyperion(const quint8& instance, const QString& rootPath)
 	, _prevCompId(hyperion::COMP_INVALID)
 	, _ledBuffer(_ledString.leds().size(), ColorRgb::BLACK)
 {
-	
+
 }
 
 Hyperion::~Hyperion()
@@ -121,7 +121,7 @@ void Hyperion::start()
 	connect(this, &Hyperion::settingsChanged, _deviceSmooth, &LinearColorSmoothing::handleSettingsUpdate);
 
 	// create the effect engine; needs to be initialized after smoothing!
-	_effectEngine = new EffectEngine(this,getSetting(settings::EFFECTS).object());
+	_effectEngine = new EffectEngine(this);
 	connect(_effectEngine, &EffectEngine::effectListUpdated, this, &Hyperion::effectListUpdated);
 
 	// init plugins
@@ -441,9 +441,14 @@ const Hyperion::InputInfo Hyperion::getPriorityInfo(const int priority) const
 	return _muxer.getInputInfo(priority);
 }
 
-void Hyperion::reloadEffects()
+const bool Hyperion::saveEffect(const QJsonObject& obj, QString& resultMsg)
 {
-	_effectEngine->readEffects();
+	return _effectEngine->saveEffect(obj, resultMsg);
+}
+
+const bool Hyperion::deleteEffect(const QString& effectName, QString& resultMsg)
+{
+	return _effectEngine->deleteEffect(effectName, resultMsg);
 }
 
 const std::list<EffectDefinition> & Hyperion::getEffects() const

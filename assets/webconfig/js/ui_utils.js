@@ -129,7 +129,6 @@ function getInstanceNameByIndex(index)
 
 function updateHyperionInstanceListing()
 {
-	console.log("updateListing")
 	var data = serverInfo.instance.filter(entry => entry.running);
 	$('#hyp_inst_listing').html("");
 	for(var key in data)

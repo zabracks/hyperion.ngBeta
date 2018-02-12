@@ -148,6 +148,8 @@ private:
 	unsigned            _grabber_cropTop;
     unsigned            _grabber_cropBottom;
 
+	QString _prevType;
+
 	VideoMode _currVideoMode;
 	SettingsManager*  _settingsManager;
 };

@@ -7,21 +7,23 @@
 class QTimer;
 class HTTPUtils;
 class PluginTable;
+class Plugins;
 ///
 /// @brief Handle all file system related tasks, init downloads and repo sync
 ///
-class Files : public QObject
+class PluginFilesHandler : public QObject
 {
 	Q_OBJECT
+private:
+	friend class HyperionDaemon;
+	PluginFilesHandler(const QString& rootPath, QObject* parent = nullptr);
 
 public:
-	///
-	/// @brief Constructor
-	/// @param[in]  rootPath rootPath of hyperion user data
-	/// @param[in]  PDB      PluginTable instance
-	///
-	Files(const QString& rootPath, PluginTable* PDB);
-	~Files();
+	static PluginFilesHandler* pfhInstance;
+	static PluginFilesHandler* getInstance() { return pfhInstance; };
+
+public:
+	~PluginFilesHandler();
 
 	/// init files
 	void init(void);
@@ -29,11 +31,9 @@ public:
 	QMap<QString, PluginDefinition> getInstalledPlugins(void) const { return _installedPlugins; };
 	QMap<QString, PluginDefinition> getAvailablePlugins(void) const { return _availablePlugins; };
 
+	void registerMe(Plugins* instance);
+
 	bool getPluginDefinition(const QString& id, PluginDefinition& def);
-
-	void removePlugin(const QString& id);
-
-	void saveSettings(const QString& id, const QJsonObject& settings);
 
 signals:
 	///
@@ -70,6 +70,9 @@ private:
 	/// Timer to refresh available plugins
 	QTimer* _rTimer;
 
+	/// store current plugins instance pointer
+	QVector<Plugins*> _registeredInstances;
+
 	/// returs int representation of a version string
 	int getIntV(QString str);
 
@@ -79,9 +82,14 @@ private:
 	/// install or update the given plugin
 	void installPlugin(const QString& id);
 
+	///
+	/// @brief remove a plugin by id from filesystem, all registered Plugins instances will stop this plugin (blocking) before
+	/// @pram id  The plugin id to delete
+	///
+	void removePlugin(const QString& id);
+
 	/// Create plugin definition from plugin id, return true on success; push to _installedPlugins;
-	/// skipStart when installing as INSTALLED should emit before START
-	bool updateInstalledPlugin(const QString& tid, const bool& skipStart = false);
+	bool updateInstalledPlugin(const QString& tid);
 
 	/// initial creation of _installedPlugins definitions, call just once on startup
 	void readInstalledPlugins(void);

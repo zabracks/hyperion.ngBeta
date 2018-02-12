@@ -18,28 +18,6 @@
 // HyperionInstanceManager
 #include <hyperion/HyperionIManager.h>
 
-// createEffect helper
-struct find_schema: std::unary_function<EffectSchema, bool>
-{
-	QString pyFile;
-	find_schema(QString pyFile):pyFile(pyFile) { }
-	bool operator()(EffectSchema const& schema) const
-	{
-		return schema.pyFile == pyFile;
-	}
-};
-
-// deleteEffect helper
-struct find_effect: std::unary_function<EffectDefinition, bool>
-{
-	QString effectName;
-	find_effect(QString effectName) :effectName(effectName) { }
-	bool operator()(EffectDefinition const& effectDefinition) const
-	{
-		return effectDefinition.name == effectName;
-	}
-};
-
 class JsonCB;
 class AuthManager;
 class HyperionIManager;

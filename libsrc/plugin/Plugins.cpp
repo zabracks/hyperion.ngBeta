@@ -2,6 +2,8 @@
 #include <plugin/Plugins.h>
 #include "Plugin.h"
 #include <db/PluginTable.h>
+#include <plugin/PluginFilesHandler.h>
+#include <utils/JsonUtils.h>
 
 // qt
 #include <QThread>
@@ -13,27 +15,46 @@
 #include <hyperion/PriorityMuxer.h>
 
 Plugins::Plugins(Hyperion* hyperion, const quint8& instance)
-	: QObject()
+	: QObject(hyperion)
 	, _log(Logger::getInstance("PLUGINS"))
 	, _hyperion(hyperion)
 	, _prioMuxer(hyperion->getMuxerInstance())
 	, _PDB(new PluginTable(instance, this))
-	, _files(_hyperion->getRootPath(), _PDB)
+	, _pluginFilesHandler(PluginFilesHandler::getInstance())
 {
 	// more meta register
 	qRegisterMetaType<PluginAction>("PluginAction");
 	qRegisterMetaType<PluginDefinition>("PluginDefinition");
-	// from files
-	connect(&_files, &Files::pluginAction, this, &Plugins::doPluginAction);
-	// to files
-	connect(this, &Plugins::pluginAction, &_files, &Files::doPluginAction);
+	// from PluginFilesHandler
+	connect(_pluginFilesHandler, &PluginFilesHandler::pluginAction, this, &Plugins::doPluginAction);
+	// to PluginFilesHandler
+	connect(this, &Plugins::pluginAction, _pluginFilesHandler, &PluginFilesHandler::doPluginAction);
 
-	// file handling init after database creation and signal link
-	_files.init();
+	// get available plugins from PluginFilesHandler and add local settings, start them if required
+	const QMap<QString, PluginDefinition> instP = _pluginFilesHandler->getInstalledPlugins();
+	QMap<QString, PluginDefinition>::const_iterator i = instP.constBegin();
+	while (i != instP.constEnd()) {
+		PluginDefinition def = i.value();
+		const QString id = i.key();
+
+		// create database entry if required
+		_PDB->createPluginRecord(id);
+
+		def.settings = _PDB->getSettings(id).toObject();
+		_installedPlugins.insert(id, def);
+
+		if(_PDB->isPluginEnabled(id))
+			start(id);
+
+	    ++i;
+	}
+
+	_pluginFilesHandler->registerMe(this);
 }
 
 Plugins::~Plugins()
 {
+	_pluginFilesHandler->registerMe(this);
 	foreach (Plugin* plug, _runningPlugins)
 	{
 		QThread* thread = plug->thread();
@@ -41,8 +62,12 @@ Plugins::~Plugins()
 		// block until thread exit, if timeout is reached force the quit
 		if(!thread->wait(5000))
 			plug->forceExit();
-
 	}
+}
+
+QMap<QString, PluginDefinition> Plugins::getAvailablePlugins(void)
+{
+	return _pluginFilesHandler->getAvailablePlugins();
 }
 
 bool Plugins::isPluginAutoUpdateEnabled(const QString& id) const
@@ -68,25 +93,16 @@ void Plugins::pluginFinished()
 		Info(_log, "Plugin with id '%s' stopped",QSTRING_CSTR(id));
 	}
 
-	// remove plugin from fs if requested
-	const bool& rem = plugin->hasRemoveFlag();
-	if(rem)
-		_files.removePlugin(id);
-
 	// delete pointer and remove from list
 	_runningPlugins.remove(id);
 	plugin->deleteLater();
 
-	// trigger restart
+	// trigger restart (Not covered is when a plugin should be removed)
 	if(_restartQueue.contains(id))
 	{
 		_restartQueue.removeAll(id);
-		// not if the plugin should be removed
-		if(!rem)
-		{
-			Debug(_log, "Init restart of plugin id '%s'", QSTRING_CSTR(id));
-			start(id);
-		}
+		Debug(_log, "Init restart of plugin id '%s'", QSTRING_CSTR(id));
+		start(id);
 	}
 }
 
@@ -101,27 +117,46 @@ void Plugins::doPluginAction(PluginAction action, QString id, bool success, Plug
 			if(!stop(id))
 				emit pluginAction(P_STOPPED, id, false);
 			break;
-		case P_REMOVE:
-			// check if plugin is running
-			if(!stop(id, true))
-				_files.removePlugin(id);
-			break;
 		case P_AUTOUPDATE:
 			// success used to control state
 			_PDB->setPluginAutoUpdateEnable(id, success);
 			emit pluginAction(P_AUTOUPDATED, id);
 			break;
 		case P_UPD_AVAIL:
-			_files.updateAvailablePlugins();
+			_pluginFilesHandler->updateAvailablePlugins();
 			break;
 		case P_SAVE:
-			_files.saveSettings(id, def.settings);
+			saveSettings(id, def.settings);
 			break;
 		// final state of a install/update, remove, updated avail from Files class - forward to external
+		case P_REMOVED:
+			if(success)
+				_installedPlugins.remove(id);
+			emit pluginAction(action, id, success, def);
+			break;
+		case P_INSTALLED:
+			emit pluginAction(action, id, success, def);
+			if(success)
+			{
+				// create database entry if required
+				_PDB->createPluginRecord(id);
+
+				// set db timestamp
+				_PDB->setPluginUpdatedAt(id);
+
+				// read settings from db for local inject
+				def.settings = _PDB->getSettings(id).toObject();
+				_installedPlugins.insert(id,def);
+
+				// we need to figure out the start after install/update
+				if(id.startsWith("service.") && _PDB->isPluginEnabled(id))
+					start(id);
+
+			}
+			break;
+		case P_REMOVE:
 		case P_SAVED:
 		case P_INSTALL:
-		case P_INSTALLED:
-		case P_REMOVED:
 		case P_UPDATED_AVAIL:
 			emit pluginAction(action, id, success, def);
 			break;
@@ -139,14 +174,15 @@ void Plugins::start(QString id)
 		return;
 	}
 
-	// get the definition
-	PluginDefinition def;
-	if(!_files.getPluginDefinition(id, def))
+	if(!_installedPlugins.contains(id))
 	{
 		Error(_log, "Can't start plugin id '%s', it's not installed",QSTRING_CSTR(id));
 		emit pluginAction(P_STARTED, id, false);
 		return;
 	}
+
+	// get the definition
+	PluginDefinition def = _installedPlugins.value(id);
 
 	// if plugin id is currently running stop it and add to _restartQueue
 	if(_runningPlugins.contains(id))
@@ -169,12 +205,12 @@ void Plugins::start(QString id)
 	for (QJsonObject::iterator it = deps.begin(); it != deps.end(); it++)
 	{
 		QString dep = it.key();
-		PluginDefinition tempDef;
-		if(!_files.getPluginDefinition(dep, tempDef))
+		if(!_installedPlugins.contains(dep))
 		{
 			Error(_log,"Failed to get path of dependency %s", QSTRING_CSTR(dep));
 			continue;
 		}
+		PluginDefinition tempDef = _installedPlugins.value(dep);
 		dPaths << tempDef.entryPy;
 	}
 
@@ -225,7 +261,7 @@ void Plugins::start(QString id)
 	pluginThread->start();
 }
 
-bool Plugins::stop(const QString& id, const bool& remove) const
+bool Plugins::stop(const QString& id, const bool& blocking) const
 {
 	if(_runningPlugins.contains(id))
 	{
@@ -234,12 +270,47 @@ bool Plugins::stop(const QString& id, const bool& remove) const
 			_PDB->setPluginEnable(id, false);
 
 		Plugin* plugin = _runningPlugins.value(id);
-
-		if(remove)
-			plugin->setRemoveFlag();
+		QThread* pluginThread = plugin->thread();
 
 		plugin->requestInterruption();
+
+		if(blocking)
+		{
+			// blocking stop is usually a remove request, so clean the queue just in case
+			pluginThread->wait(6000);
+		}
+
 		return true;
 	}
 	return false;
+}
+
+void Plugins::saveSettings(const QString& id, const QJsonObject& settings)
+{
+	if(!_installedPlugins.contains(id) || id.startsWith("module."))
+	{
+		Error(_log,"Can't save settings for id '%s', not qualified or found.",QSTRING_CSTR(id));
+		emit pluginAction(P_SAVED, id, false);
+		return;
+	}
+	PluginDefinition newDef = _installedPlugins.value(id);
+	// validate against schema
+	QJsonObject schema = newDef.settingsSchema;
+	if(!JsonUtils::validate("PluginSave:"+id, settings, schema, _log))
+	{
+		Error(_log,"Failed to validate settings for id '%s'",QSTRING_CSTR(id));
+		emit pluginAction(P_SAVED, id, false);
+		return;
+	}
+	if(_PDB->saveSettings(id, settings))
+	{
+		// update the definition
+		newDef.settings = settings;
+		_installedPlugins.insert(id, newDef);
+		emit pluginAction(P_SAVED, id, true, newDef);
+		return;
+	}
+	Error(_log,"Failed to save settings for id '%s'",QSTRING_CSTR(id));
+	emit pluginAction(P_SAVED, id, false);
+	return;
 }

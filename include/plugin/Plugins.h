@@ -3,9 +3,7 @@
 // hyperion
 #include <utils/Logger.h>
 #include <hyperion/Hyperion.h>
-
-// proj
-#include <plugin/Files.h>
+#include <plugin/PluginDefinition.h>
 
 // qt
 #include <QList>
@@ -13,6 +11,7 @@
 class Plugin;
 class PluginTable;
 class PriorityMuxer;
+class PluginFilesHandler;
 
 ///
 /// @brief Manages everything related to Plugins
@@ -28,14 +27,22 @@ public:
 	Plugins(Hyperion* hyperion, const quint8& instance);
 	~Plugins();
 
-	QMap<QString, PluginDefinition> getInstalledPlugins(void) const { return _files.getInstalledPlugins(); };
-	QMap<QString, PluginDefinition> getAvailablePlugins(void) const { return _files.getAvailablePlugins(); };
+	QMap<QString, PluginDefinition> getInstalledPlugins(void) const { return _installedPlugins; };
+	QMap<QString, PluginDefinition> getAvailablePlugins(void);
 
 	bool isPluginRunning(const QString& id) const { return  _runningPlugins.contains(id); };
 
 	bool isPluginAutoUpdateEnabled(const QString& id) const;
 
 	const QJsonValue getSettingsOfPlugin(const QString& id) { QMap<QString, PluginDefinition> inst = getInstalledPlugins(); const PluginDefinition& def =  inst.value(id); return def.settings; };
+
+	///
+	/// @brief stop a plugin by id, as blocking, returns false if plugin is not running
+	/// Used from PluginFilesHandler only!
+	/// @param id  The id of the plugin to stop
+	/// @param blocking  If true the method retuns after the plugin has been stopped
+	///
+	bool stop(const QString& id, const bool& blocking = false) const;
 
 signals:
 	///
@@ -59,14 +66,21 @@ private:
 	/// database wrapper
 	PluginTable* _PDB;
 
-	/// Files instance
-	Files _files;
+	/// Plugin files handler
+	PluginFilesHandler* _pluginFilesHandler;
+
+	// instance specific copy of PluginFilesHandler with injected settings
+	QMap<QString, PluginDefinition> _installedPlugins;
 
 	/// start or restart a plugin
 	void start(QString id);
 
-	/// stop a plugin by id, with remove flag, returns false if plugin is not running
-	bool stop(const QString& id, const bool& remove = false) const;
+	///
+	/// @brief Save settings for given plugin id in db, assigned with Hyperion instance
+	/// @param  id        The plugin id
+	/// @param  settings  The settings for this plugin
+	///
+	void saveSettings(const QString& id, const QJsonObject& settings);
 
 	QMap<QString,Plugin*> _runningPlugins;
 

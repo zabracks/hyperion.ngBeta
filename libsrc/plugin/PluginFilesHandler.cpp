@@ -1,6 +1,7 @@
 // project
-#include <plugin/Files.h>
+#include <plugin/PluginFilesHandler.h>
 #include <db/PluginTable.h>
+#include <plugin/Plugins.h>
 
 // hyperion
 #include <utils/JsonUtils.h>
@@ -15,12 +16,16 @@
 // QuaZip
 #include <JlCompress.h>
 
-Files::Files(const QString& rootPath, PluginTable* PDB)
-	: QObject()
+PluginFilesHandler* PluginFilesHandler::pfhInstance;
+
+PluginFilesHandler::PluginFilesHandler(const QString& rootPath, QObject* parent)
+	: QObject(parent)
 	, _log(Logger::getInstance("PLUGINS"))
-	, _PDB(PDB)
+	, _PDB(new PluginTable(0,this))
 	, _http(new HTTPUtils(_log))
 {
+	PluginFilesHandler::pfhInstance = this;
+
 	// create folder structure
 	_pluginsDir = rootPath + "/plugins";
 	_packageDir = _pluginsDir + "/packages";
@@ -29,16 +34,18 @@ Files::Files(const QString& rootPath, PluginTable* PDB)
 	dir.mkpath(_packageDir);
 
 	// listen for http utils reply
-	connect(_http, &HTTPUtils::replyReceived, this, &Files::replyReceived);
+	connect(_http, &HTTPUtils::replyReceived, this, &PluginFilesHandler::replyReceived);
+
+	// init
+	init();
 }
 
-Files::~Files()
+PluginFilesHandler::~PluginFilesHandler()
 {
 	delete _http;
-	delete _rTimer;
 }
 
-void Files::init(void)
+void PluginFilesHandler::init(void)
 {
 	// fetch plugins from plugin directory
 	readInstalledPlugins();
@@ -47,11 +54,40 @@ void Files::init(void)
 	_rTimer = new QTimer(this);
 	_rTimer->setInterval(86400000);
 	_rTimer->start();
-	connect(_rTimer, &QTimer::timeout, this, &Files::updateAvailablePlugins);
+	connect(_rTimer, &QTimer::timeout, this, &PluginFilesHandler::updateAvailablePlugins);
 	updateAvailablePlugins();
 }
 
-void Files::replyReceived(bool success, int type, QString id, QByteArray data)
+void PluginFilesHandler::registerMe(Plugins* instance)
+{
+	if(_registeredInstances.contains(instance))
+		_registeredInstances.removeAll(instance);
+	else
+		_registeredInstances.append(instance);
+}
+
+void PluginFilesHandler::doPluginAction(PluginAction action, QString id, bool success, PluginDefinition def)
+{
+	switch(action)
+	{
+		case P_INSTALL:
+			installPlugin(id);
+			break;
+		case P_REMOVE:
+			for(auto &entry : _registeredInstances)
+			{
+				// blocking stop
+				entry->stop(id, true);
+			}
+			// now remove, the result will be emited
+			removePlugin(id);
+			break;
+		default:
+			break;
+	}
+}
+
+void PluginFilesHandler::replyReceived(bool success, int type, QString id, QByteArray data)
 {
 	if(!success)
 	{
@@ -134,24 +170,18 @@ void Files::replyReceived(bool success, int type, QString id, QByteArray data)
 			}
 
 			// try to update _installedPlugins
-			if(!updateInstalledPlugin(pid, true))
+			if(!updateInstalledPlugin(pid))
 			{
 				Error(_log,"Plugin '%s' install/update failed.", QSTRING_CSTR(dev.name));
 				emit pluginAction(P_INSTALLED, pid, false);
 				return;
 			}
 
-			// update db entry
-			_PDB->setPluginUpdatedAt(pid);
-
 			// notify with new definition
 			PluginDefinition newDef = _installedPlugins.value(pid);
 			Info(_log,"Plugin '%s' successfully installed/updated.", QSTRING_CSTR(dev.name));
 			emit pluginAction(P_INSTALLED, pid, true, newDef);
 
-			// start after install
-			if(pid.startsWith("service.") && _PDB->isPluginEnabled(pid))
-				emit pluginAction(P_START, pid);
 			// bytearray to unzip
 			//QBuffer buffer(&data);
 			//buffer->open(QIODevice::ReadOnly);
@@ -163,7 +193,7 @@ void Files::replyReceived(bool success, int type, QString id, QByteArray data)
 	}
 }
 
-void Files::doUpdateCheck(void)
+void PluginFilesHandler::doUpdateCheck(void)
 {
 	// iterate installed plugins
 	QMap<QString, PluginDefinition>::const_iterator i = _installedPlugins.constBegin();
@@ -186,22 +216,7 @@ void Files::doUpdateCheck(void)
 	}
 }
 
-void Files::doPluginAction(PluginAction action, QString id, bool success, PluginDefinition def)
-{
-	QJsonObject setting;
-	PluginDefinition newDef;
-	QJsonObject schema;
-	switch(action)
-	{
-		case P_INSTALL:
-			installPlugin(id);
-			break;
-		default:
-			break;
-	}
-}
-
-void Files::removePlugin(const QString& id)
+void PluginFilesHandler::removePlugin(const QString& id)
 {
 	if(FileUtils::removeDir(_pluginsDir+"/"+id, _log))
 	{
@@ -215,37 +230,7 @@ void Files::removePlugin(const QString& id)
 	emit pluginAction(P_REMOVED, id, false);
 }
 
-void Files::saveSettings(const QString& id, const QJsonObject& settings)
-{
-	if(!_installedPlugins.contains(id) || id.startsWith("module."))
-	{
-		Error(_log,"Can't save settings for id '%s', not qualified or found.",QSTRING_CSTR(id));
-		emit pluginAction(P_SAVED, id, false);
-		return;
-	}
-	PluginDefinition newDef = _installedPlugins.value(id);
-	// validate against schema
-	QJsonObject schema = newDef.settingsSchema;
-	if(!JsonUtils::validate("PluginSave:"+id, settings, schema, _log))
-	{
-		Error(_log,"Failed to validate settings for id '%s'",QSTRING_CSTR(id));
-		emit pluginAction(P_SAVED, id, false);
-		return;
-	}
-	if(_PDB->saveSettings(id, settings))
-	{
-		// update the definition
-		newDef.settings = settings;
-		_installedPlugins.insert(id, newDef);
-		emit pluginAction(P_SAVED, id, true, newDef);
-		return;
-	}
-	Error(_log,"Failed to save settings for id '%s'",QSTRING_CSTR(id));
-	emit pluginAction(P_SAVED, id, false);
-	return;
-}
-
-void Files::installPlugin(const QString& id)
+void PluginFilesHandler::installPlugin(const QString& id)
 {
 	// verify the plugin exists in availablePlugins
 	if(!_availablePlugins.contains(id))
@@ -327,12 +312,12 @@ void Files::installPlugin(const QString& id)
 	_http->sendGet(_dUrl+id+".zip", "P_INSTALL:"+id);
 }
 
-void Files::updateAvailablePlugins(void)
+void PluginFilesHandler::updateAvailablePlugins(void)
 {
 	_http->sendGet(_rUrl, "P_AVAIL");
 }
 
-bool Files::getPluginDefinition(const QString& id, PluginDefinition& def)
+bool PluginFilesHandler::getPluginDefinition(const QString& id, PluginDefinition& def)
 {
 	if(_installedPlugins.contains(id))
 	{
@@ -342,7 +327,7 @@ bool Files::getPluginDefinition(const QString& id, PluginDefinition& def)
 	return false;
 }
 
-bool Files::updateInstalledPlugin(const QString& tid, const bool& skipStart)
+bool PluginFilesHandler::updateInstalledPlugin(const QString& tid)
 {
 	// get plugin.json for meta data
 	QString pd(_pluginsDir+"/"+tid);
@@ -354,7 +339,6 @@ bool Files::updateInstalledPlugin(const QString& tid, const bool& skipStart)
 	QString id = metaObj["id"].toString().toLower();
 	QString entryPy("/lib");
 	QJsonObject settingsSchemaObj;
-	QJsonObject settingsObj;
 
 	// compare provided id(eg. folder name) with meta id
 	if(tid != id)
@@ -379,12 +363,6 @@ bool Files::updateInstalledPlugin(const QString& tid, const bool& skipStart)
 		// load translations??
 	}
 
-	// create database entry if required
-	_PDB->createPluginRecord(id);
-
-	// read settings from db
-	settingsObj = _PDB->getSettings(id).toObject();
-
 	// create the PluginDefinition
 	PluginDefinition newDefinition;
 	newDefinition.name = metaObj["name"].toString();
@@ -397,19 +375,13 @@ bool Files::updateInstalledPlugin(const QString& tid, const bool& skipStart)
 	newDefinition.source = metaObj["source"].toString();
 	newDefinition.entryPy = pd+entryPy;
 	newDefinition.settingsSchema = settingsSchemaObj;
-	newDefinition.settings = settingsObj;
 
 	_installedPlugins.insert(id,newDefinition);
 
-	// start/restart(for updated plugins) service if enabled in db
-	if(!skipStart && id.startsWith("service.") && _PDB->isPluginEnabled(id))
-	{
-		emit pluginAction(P_START, id);
-	}
 	return true;
 }
 
-void Files::readInstalledPlugins(void)
+void PluginFilesHandler::readInstalledPlugins(void)
 {
 	QDir dir(_pluginsDir);
 	QStringList filters;
@@ -425,7 +397,7 @@ void Files::readInstalledPlugins(void)
 	}
 }
 
-int Files::getIntV(QString str)
+int PluginFilesHandler::getIntV(QString str)
 {
 	return str.remove('.').toInt();
 }

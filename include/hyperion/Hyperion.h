@@ -155,8 +155,21 @@ public:
 	///
 	const InputInfo getPriorityInfo(const int priority) const;
 
-	/// Reload the list of available effects
-	void reloadEffects();
+	///
+	/// @brief Save an effect
+	/// @param       obj       The effect args
+	/// @param[out] resultMsg  The feedback message
+	/// @return True on success else false
+	///
+	const bool saveEffect(const QJsonObject& obj, QString& resultMsg);
+
+	///
+	/// @brief Delete an effect by name.
+	/// @param[in]  effectName  The effect name to delete
+	/// @param[out] resultMsg   The message on error
+	/// @return True on success else false
+	///
+	const bool deleteEffect(const QString& effectName, QString& resultMsg);
 
 	/// Get the list of available effects
 	/// @return The list of available effects
