@@ -69,7 +69,11 @@ public:
 	HyperionDaemon(QString rootPath, QObject *parent, const bool& logLvlOverwrite );
 	~HyperionDaemon();
 
-	quint16 getWebServerPort();
+	///
+	/// @brief Get webserver pointer (systray)
+	///
+	WebServer* getWebServerInstance() { return _webserver; };
+
 	///
 	/// @brief Get the current videoMode
 	///

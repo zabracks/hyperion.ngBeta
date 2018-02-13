@@ -7,6 +7,7 @@
 #include <QCloseEvent>
 
 #include <hyperion/Hyperion.h>
+#include <hyperion/HyperionIManager.h>
 
 class HyperionDaemon;
 
@@ -15,7 +16,7 @@ class SysTray : public QWidget
 	Q_OBJECT
 
 public:
-	SysTray(HyperionDaemon *hyperiond, quint16 webPort);
+	SysTray(HyperionDaemon *hyperiond);
 	~SysTray();
 
 
@@ -29,6 +30,16 @@ public slots:
 
 private slots:
 	void iconActivated(QSystemTrayIcon::ActivationReason reason);
+
+	///
+	/// @brief is called whenever the webserver changes the port
+	///
+	void webserverPortChanged(const quint16& port) { _webPort = port; };
+
+	///
+	/// @brief is called whenever a hyperion isntance state changes
+	///
+	void handleInstanceStateChange(const instanceState& state, const quint8& instance, const QString& name);
 
 private:
 	void createTrayIcon();
@@ -44,7 +55,8 @@ private:
 	QMenu           *_trayIconMenu;
 	QMenu           *_trayIconEfxMenu;
 	QColorDialog     _colorDlg;
-	HyperionDaemon  *_hyperiond;	
-	quint16          _webPort;
+	HyperionDaemon  *_hyperiond;
 	Hyperion        *_hyperion;
+	HyperionIManager*_instanceManager;
+	quint16          _webPort;
 };

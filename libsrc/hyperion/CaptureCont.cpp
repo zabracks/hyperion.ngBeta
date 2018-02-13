@@ -10,6 +10,7 @@ CaptureCont::CaptureCont(Hyperion* hyperion)
 	, _hyperion(hyperion)
 	, _systemCaptEnabled(false)
 	, _systemCaptName()
+	, _systemInactiveTimer(new QTimer(this))
 	, _v4lCaptEnabled(false)
 	, _v4lCaptName()
 	, _v4lInactiveTimer(new QTimer(this))
@@ -19,6 +20,11 @@ CaptureCont::CaptureCont(Hyperion* hyperion)
 
 	// comp changes
 	connect(_hyperion, &Hyperion::componentStateChanged, this, &CaptureCont::componentStateChanged);
+
+	// inactive timer system
+	connect(_systemInactiveTimer, &QTimer::timeout, this, &CaptureCont::setSystemInactive);
+	_systemInactiveTimer->setSingleShot(true);
+	_systemInactiveTimer->setInterval(5000);
 
 	// inactive timer v4l
 	connect(_v4lInactiveTimer, &QTimer::timeout, this, &CaptureCont::setV4lInactive);
@@ -52,6 +58,7 @@ void CaptureCont::handleSystemImage(const QString& name, const Image<ColorRgb>& 
 		_hyperion->registerInput(_systemCaptPrio, hyperion::COMP_GRABBER, "System", name);
 		_systemCaptName = name;
 	}
+	_systemInactiveTimer->start();
 	_hyperion->setInputImage(_systemCaptPrio, image);
 }
 
@@ -131,4 +138,9 @@ void CaptureCont::componentStateChanged(const hyperion::Components component, bo
 void CaptureCont::setV4lInactive()
 {
 	_hyperion->setInputInactive(_v4lCaptPrio);
+}
+
+void CaptureCont::setSystemInactive()
+{
+	_hyperion->setInputInactive(_systemCaptPrio);
 }

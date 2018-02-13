@@ -10,30 +10,27 @@
 
 #include <utils/ColorRgb.h>
 #include <effectengine/EffectDefinition.h>
-#include <hyperion/HyperionIManager.h>
+#include <webserver/WebServer.h>
 
 #include "hyperiond.h"
 #include "systray.h"
 
-SysTray::SysTray(HyperionDaemon *hyperiond, quint16 webPort)
+SysTray::SysTray(HyperionDaemon *hyperiond)
 	: QWidget()
 	, _colorDlg(this)
 	, _hyperiond(hyperiond)
-	, _webPort(webPort)
+	, _hyperion(nullptr)
+	, _instanceManager(HyperionIManager::getInstance())
+	, _webPort(8090)
 {
 	Q_INIT_RESOURCE(resource);
-	_hyperion = HyperionIManager::getInstance()->getHyperionInstance();
-	createTrayIcon();
 
-	connect(_trayIcon, SIGNAL(activated(QSystemTrayIcon::ActivationReason)),
-		this, SLOT(iconActivated(QSystemTrayIcon::ActivationReason)));
+	// webserver port
+	WebServer* webserver = hyperiond->getWebServerInstance();
+	connect(webserver, &WebServer::portChanged, this, &SysTray::webserverPortChanged);
 
- 	connect(&_colorDlg, SIGNAL(currentColorChanged(const QColor&)), this, SLOT(setColor(const QColor &)));
-	QIcon icon(":/hyperion-icon.png");
-	_trayIcon->setIcon(icon);
-	_trayIcon->show();
-	setWindowIcon(icon);
-	_colorDlg.setOptions(QColorDialog::NoButtons);
+	// instance changes
+	connect(_instanceManager, &HyperionIManager::instanceStateChanged, this, &SysTray::handleInstanceStateChange);
 }
 
 SysTray::~SysTray()
@@ -143,4 +140,30 @@ void SysTray::setEffect()
 void SysTray::clearEfxColor()
 {
 	_hyperion->clear(1);
+}
+
+void SysTray::handleInstanceStateChange(const instanceState& state, const quint8& instance, const QString& name)
+{
+	switch(state){
+		case H_STARTED:
+			if(instance == 0)
+			{
+				_hyperion = _instanceManager->getHyperionInstance(0);
+
+				createTrayIcon();
+				connect(_trayIcon, SIGNAL(activated(QSystemTrayIcon::ActivationReason)),
+					this, SLOT(iconActivated(QSystemTrayIcon::ActivationReason)));
+
+				connect(&_colorDlg, SIGNAL(currentColorChanged(const QColor&)), this, SLOT(setColor(const QColor &)));
+				QIcon icon(":/hyperion-icon.png");
+				_trayIcon->setIcon(icon);
+				_trayIcon->show();
+				setWindowIcon(icon);
+				_colorDlg.setOptions(QColorDialog::NoButtons);
+			}
+
+			break;
+		default:
+			break;
+	}
 }

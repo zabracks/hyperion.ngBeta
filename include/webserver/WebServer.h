@@ -43,6 +43,11 @@ signals:
 	///
 	void stateChange(const bool newState);
 
+	///
+	/// @brief Emits whenever the port changes (doesn't compare prev <> now)
+	///
+	void portChanged(const quint16& port);
+
 public slots:
 	///
 	/// @brief Init server after thread start

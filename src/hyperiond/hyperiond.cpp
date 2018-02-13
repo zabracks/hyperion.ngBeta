@@ -147,11 +147,6 @@ HyperionDaemon::~HyperionDaemon()
 	delete _pyInit;
 }
 
-quint16 HyperionDaemon::getWebServerPort()
-{
-	return _webserver->getPort();
-}
-
 void HyperionDaemon::setVideoMode(const VideoMode& mode)
 {
 	if(_currVideoMode != mode)

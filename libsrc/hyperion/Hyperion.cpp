@@ -564,8 +564,8 @@ void Hyperion::update()
 	{
 		_ledBuffer = priorityInfo.ledColors;
 	}
-	// copy rawLedColors before adjustments
-	_rawLedBuffer = _ledBuffer;
+	// emit rawLedColors before transform
+	emit rawLedColors(_ledBuffer);
 
 	// apply adjustments
 	if(compChanged)

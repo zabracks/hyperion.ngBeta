@@ -54,6 +54,11 @@ private slots:
 	///
 	void setV4lInactive();
 
+	///
+	/// @brief Is called from _systemInactiveTimer to set source after specific time to inactive
+	///
+	void setSystemInactive();
+
 private:
 	/// Hyperion instance
 	Hyperion* _hyperion;
@@ -62,6 +67,7 @@ private:
 	bool _systemCaptEnabled;
 	quint8 _systemCaptPrio;
 	QString _systemCaptName;
+	QTimer* _systemInactiveTimer;
 
 	/// Reflect state of v4l capture and prio
 	bool _v4lCaptEnabled;

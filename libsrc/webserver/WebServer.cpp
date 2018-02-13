@@ -108,6 +108,7 @@ void WebServer::handleSettingsUpdate(const settings::type& type, const QJsonDocu
 			NetUtils::portAvailable(_port, _log);
 
 		start();
+		emit portChanged(_port);
 	}
 }
 

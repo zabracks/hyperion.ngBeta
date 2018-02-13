@@ -12,9 +12,6 @@
 #include <QImage>
 #include <QBuffer>
 #include <QByteArray>
-#include <QFileInfo>
-#include <QDir>
-#include <QIODevice>
 #include <QDateTime>
 
 // hyperion includes
@@ -59,6 +56,7 @@ JsonAPI::JsonAPI(QString peerAddress, Logger* log, const bool& localConnection, 
 	, _jsonCB(nullptr)
 	, _streaming_logging_activated(false)
 	, _image_stream_timeout(0)
+	, _led_stream_timeout(0)
 {
 	Q_INIT_RESOURCE(JSONRPC_schemas);
 	// setup auth interface
@@ -75,9 +73,8 @@ JsonAPI::JsonAPI(QString peerAddress, Logger* log, const bool& localConnection, 
 	if(_apiAuthRequired && localConnection && !_authManager->isLocalAuthRequired())
 		_authorized = true;
 
-	// led color stream update timer
-	connect(&_timer_ledcolors, SIGNAL(timeout()), this, SLOT(streamLedcolorsUpdate()));
 	_image_stream_mutex.unlock();
+	_led_stream_mutex.unlock();
 
 	// init Hyperion pointer
 	handleInstanceSwitch(0);
@@ -99,11 +96,6 @@ const bool JsonAPI::handleInstanceSwitch(const quint8& inst, const bool& forced)
 			disconnect(_plugins, 0, this, 0);
 			disconnect(this, 0, _plugins, 0);
 		}
-
-		// stop timer ledcolors
-		bool timerLedColors = _timer_ledcolors.isActive();
-		if(timerLedColors)
-			_timer_ledcolors.stop();
 
 		// get new Hyperion pointer
 		_hyperion = _instanceManager->getHyperionInstance(inst);
@@ -132,9 +124,9 @@ const bool JsonAPI::handleInstanceSwitch(const quint8& inst, const bool& forced)
 		if(_ledcolorsImageActive)
 			connect(_hyperion, &Hyperion::currentImage, this, &JsonAPI::setImage, Qt::UniqueConnection);
 
-		//ledColor stream timer
-		if(timerLedColors)
-			_timer_ledcolors.start();
+		//ledColor stream last state
+		if(_ledcolorsLedsActive)
+			connect(_hyperion, &Hyperion::rawLedColors, this, &JsonAPI::streamLedcolorsUpdate, Qt::UniqueConnection);
 
 		// resend serverinfo, pluginsInitData and serverconfig for userAuthorized on reset?
 		// if(forced)
@@ -911,12 +903,13 @@ void JsonAPI::handleLedColorsCommand(const QJsonObject& message, const QString &
 		_streaming_leds_reply["success"] = true;
 		_streaming_leds_reply["command"] = command+"-ledstream-update";
 		_streaming_leds_reply["tan"]     = tan;
-		_timer_ledcolors.setInterval(125);
-		_timer_ledcolors.start();
+		connect(_hyperion, &Hyperion::rawLedColors, this, &JsonAPI::streamLedcolorsUpdate, Qt::UniqueConnection);
+		_ledcolorsLedsActive = true;
 	}
 	else if (subcommand == "ledstream-stop")
 	{
-		_timer_ledcolors.stop();
+		disconnect(_hyperion, &Hyperion::rawLedColors, this, &JsonAPI::streamLedcolorsUpdate);
+		_ledcolorsLedsActive = false;
 	}
 	else if (subcommand == "imagestream-start")
 	{
@@ -1501,32 +1494,37 @@ void JsonAPI::sendErrorReply(const QString &error, const QString &command, const
 }
 
 
-void JsonAPI::streamLedcolorsUpdate()
+void JsonAPI::streamLedcolorsUpdate(const std::vector<ColorRgb>& ledColors)
 {
-	QJsonObject result;
-	QJsonArray leds;
-
-	const std::vector<ColorRgb> & ledColors = _hyperion->getRawLedBuffer();
-	for(auto color = ledColors.begin(); color != ledColors.end(); ++color)
+	if ( (_led_stream_timeout+50) < QDateTime::currentMSecsSinceEpoch() && _led_stream_mutex.tryLock(0) )
 	{
-		QJsonObject item;
-		item["index"] = int(color - ledColors.begin());
-		item["red"]   = color->red;
-		item["green"] = color->green;
-		item["blue"]  = color->blue;
-		leds.append(item);
+		_led_stream_timeout = QDateTime::currentMSecsSinceEpoch();
+		QJsonObject result;
+		QJsonArray leds;
+
+		for(auto color = ledColors.begin(); color != ledColors.end(); ++color)
+		{
+			QJsonObject item;
+			item["index"] = int(color - ledColors.begin());
+			item["red"]   = color->red;
+			item["green"] = color->green;
+			item["blue"]  = color->blue;
+			leds.append(item);
+		}
+
+		result["leds"] = leds;
+		_streaming_leds_reply["result"] = result;
+
+		// send the result
+		emit callbackMessage(_streaming_leds_reply);
+
+		_led_stream_mutex.unlock();
 	}
-
-	result["leds"] = leds;
-	_streaming_leds_reply["result"] = result;
-
-	// send the result
-	emit callbackMessage(_streaming_leds_reply);
 }
 
 void JsonAPI::setImage(const Image<ColorRgb> & image)
 {
-	if ( (_image_stream_timeout+250) < QDateTime::currentMSecsSinceEpoch() && _image_stream_mutex.tryLock(0) )
+	if ( (_image_stream_timeout+50) < QDateTime::currentMSecsSinceEpoch() && _image_stream_mutex.tryLock(0) )
 	{
 		_image_stream_timeout = QDateTime::currentMSecsSinceEpoch();
 

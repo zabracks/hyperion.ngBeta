@@ -213,12 +213,6 @@ public:
 	bool sourceAutoSelectEnabled();
 
 	///
-	/// @brief Get the last untransformed/unadjusted led colors
-	/// @return   The _rawLedBuffer leds
-	///
-	const std::vector<ColorRgb>& getRawLedBuffer() { return _rawLedBuffer; };
-
-	///
 	/// @brief Called from components to update their current state. DO NOT CALL FROM USERS
 	///
 	/// @param component The component from enum
@@ -435,6 +429,12 @@ signals:
 	void ledDeviceData(const std::vector<ColorRgb>& ledValues);
 
 	///
+	/// @brief Emits whenever new untransformed ledColos data is available, reflects the current visible device
+	///
+	void rawLedColors(const std::vector<ColorRgb>& ledValues);
+
+
+	///
 	/// @brief Emits before thread quit is requested
 	///
 	void finished();
@@ -542,8 +542,6 @@ private:
 
 	/// buffer for leds (with adjustment)
 	std::vector<ColorRgb> _ledBuffer;
-	/// buffer for leds (without adjustment)
-	std::vector<ColorRgb> _rawLedBuffer;
 
 	VideoMode _currVideoMode = VIDEO_2D;
 
