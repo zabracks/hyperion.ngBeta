@@ -18,10 +18,6 @@ then
 fi
 echo "compile jobs: ${JOBS:=4}"
 
-# compile prepare
-mkdir build || exit 1
-cd build
-
 # Compile hyperion for tags
 [ -n "${TRAVIS_TAG:-}" ] && BUILD_TYPE=Release
 
@@ -33,6 +29,9 @@ cd build
 # Build the package on osx
 if [[ "$TRAVIS_OS_NAME" == 'osx' || "$TRAVIS_OS_NAME" == 'darwin' ]]
 then
+	# compile prepare
+	mkdir build || exit 1
+	cd build
 	cmake -DPLATFORM=$PLATFORM -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DCMAKE_INSTALL_PREFIX=/usr .. || exit 2
 	make -j ${JOBS} || exit 3
 fi
@@ -42,5 +41,5 @@ if [[ $TRAVIS_OS_NAME == 'linux' ]]
 then
 	echo "Startup docker"
 	ls -l
-	docker build -f ./.travis/Dockerfile.ubuntu -t ubuntu:16.04 --cache-from ubuntu:16.04 . #|| exit 3
+	docker build -f ./.travis/Dockerfile.ubuntu -t ubuntu:16.04 --cache-from ubuntu:16.04 . || exit 3
 fi
