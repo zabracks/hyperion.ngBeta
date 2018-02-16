@@ -16,6 +16,7 @@ elif [[ "$TRAVIS_OS_NAME" == 'linux' ]]
 then
 	JOBS=$(nproc)
 fi
+echo "compile jobs: ${JOBS:=4}"
 
 # compile prepare
 mkdir build || exit 1
@@ -36,12 +37,15 @@ then
 	cmake -DENABLE_OSX=ON -DENABLE_DISPMANX=ON .. || exit 5
 fi
 
-echo "compile jobs: ${JOBS:=4}"
-make -j ${JOBS} || exit 3
-
-# Build the package on Linux
-if [[ $TRAVIS_OS_NAME == 'linux' ]]
+# Build the package on osx
+if [[ "$TRAVIS_OS_NAME" == 'osx' || "$TRAVIS_OS_NAME" == 'darwin' ]]
 then
-	make -j ${JOBS} package || exit 4
+	make -j ${JOBS} || exit 3
 fi
 
+# Build the package with docker
+if [[ $TRAVIS_OS_NAME == 'linux' ]]
+then
+	echo "Startup docker"
+	docker build -f ./.travis/Dockerfile.ubuntu -t ubuntu:16.04 --cache-from ubuntu:16.04 . || exit 3
+fi

@@ -17,11 +17,9 @@ then
 # install linux deps for hyperion compile
 elif [[ $TRAVIS_OS_NAME == 'linux' ]]
 then
-	echo "Install linux deps"
-	sudo apt-get -qq update
-	sudo apt-get install -qq -y qtbase5-dev libqt5serialport5-dev libusb-1.0-0-dev python3-dev libxrender-dev libavahi-core-dev libavahi-compat-libdnssd-dev doxygen expect
-	echo "use docker"
-	docker build -f ./.travis/Dockerfile.ubuntu -t ubuntu:16.04 --cache-from ubuntu:16.04 .
+	#echo "Install linux deps"
+	#sudo apt-get -qq update
+	#sudo apt-get install -qq -y qtbase5-dev libqt5serialport5-dev libusb-1.0-0-dev python3-dev libxrender-dev libavahi-core-dev libavahi-compat-libdnssd-dev doxygen expect
 else
     echo "Unsupported platform: $TRAVIS_OS_NAME"
     exit 5
