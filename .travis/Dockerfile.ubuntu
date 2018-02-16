@@ -1,0 +1,15 @@
+FROM ubuntu:16.04
+
+# install deps
+RUN apt-get install -y git cmake python3-dev qtbase5-dev libqt5serialport5-dev build-essential libusb-1.0-0-dev libavahi-core-dev libavahi-compat-libdnssd-dev
+
+# Set the working directory to /build
+WORKDIR /build
+
+# Copy the current directory contents into the container at /build
+COPY . /build
+
+# compile
+RUN  cd hyperion* && mkdir build && cd build \
+      && cmake -DCMAKE_BUILD_TYPE=Release .. \
+      && make -j $(nproc) package
