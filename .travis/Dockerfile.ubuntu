@@ -8,7 +8,7 @@ WORKDIR /build
 
 # Copy the current directory contents into the container at /build
 COPY . /build
-
+RUN ls -l
 # compile
 RUN  cd hyperion* && mkdir build && cd build \
       && cmake -DCMAKE_BUILD_TYPE=Release .. \
