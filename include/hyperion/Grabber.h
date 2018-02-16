@@ -40,7 +40,7 @@ public:
 	virtual bool setWidthHeight(int width, int height);
 
 	///
-	/// @brief Apply new pixelDecimation (used from x11)
+	/// @brief Apply new pixelDecimation (used from x11 and qt)
 	///
 	virtual void setPixelDecimation(int pixelDecimation) {};
 
@@ -72,7 +72,7 @@ public:
 	virtual void setDeviceVideoStandard(QString device, VideoStandard videoStandard) {};
 
 	///
-	/// @brief Apply display index (used from x11)
+	/// @brief Apply display index (used from qt)
 	///
 	virtual void setDisplayIndex(int index) {};
 

@@ -223,8 +223,8 @@ void WebSocketClient::sendClose(int status, QString reason)
 
 void WebSocketClient::handleBinaryMessage(QByteArray &data)
 {
-	uint8_t  priority   = data.at(0);
-	unsigned duration_s = data.at(1);
+	//uint8_t  priority   = data.at(0);
+	//unsigned duration_s = data.at(1);
 	unsigned imgSize    = data.size() - 4;
 	unsigned width      = ((data.at(2) << 8) & 0xFF00) | (data.at(3) & 0xFF);
 	unsigned height     =  imgSize / width;

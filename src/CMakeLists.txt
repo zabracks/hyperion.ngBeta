@@ -1,7 +1,7 @@
 add_subdirectory(hyperiond)
 add_subdirectory(hyperion-remote)
 
-# The following clients depend on the protobuf library
+# The following binaries are just compiled if requested
 if (ENABLE_AMLOGIC)
 	add_subdirectory(hyperion-aml)
 endif()
@@ -24,4 +24,8 @@ endif()
 
 if(ENABLE_OSX)
 	add_subdirectory(hyperion-osx)
+endif()
+
+if(ENABLE_QT)
+	add_subdirectory(hyperion-qt)
 endif()

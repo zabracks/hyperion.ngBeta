@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.0.0)
-project(hyperion-v4l2)
+project(hyperion-qt)
 
 find_package(Qt5Widgets REQUIRED)
 
@@ -8,29 +8,28 @@ include_directories(
 	${FLATBUFFERS_INCLUDE_DIRS}
 )
 
-set(Hyperion_V4L2_HEADERS
-	ScreenshotHandler.h
+set(Hyperion_QT_HEADERS
+	QtWrapper.h
 )
 
-set(Hyperion_V4L2_SOURCES
-	hyperion-v4l2.cpp
-	ScreenshotHandler.cpp
+set(Hyperion_QT_SOURCES
+	QtWrapper.cpp
+	hyperion-qt.cpp
 )
 
 add_executable(${PROJECT_NAME}
-	${Hyperion_V4L2_HEADERS}
-	${Hyperion_V4L2_SOURCES}
+	${Hyperion_QT_HEADERS}
+	${Hyperion_QT_SOURCES}
 )
 
 target_link_libraries(${PROJECT_NAME}
-	v4l2-grabber
 	commandline
-	hyperion-utils
+	qt-grabber
 	flatbufserver
 	flatbuffers
 	ssdp
 	Qt5::Core
-	Qt5::Gui
+	Qt5::Widgets
 	Qt5::Network
 )
 

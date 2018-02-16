@@ -20,6 +20,7 @@ SET ( DEFAULT_AMLOGIC    OFF )
 SET ( DEFAULT_DISPMANX   OFF )
 SET ( DEFAULT_OSX        OFF )
 SET ( DEFAULT_X11        OFF )
+SET ( DEFAULT_QT         ON )
 SET ( DEFAULT_WS281XPWM  OFF )
 SET ( DEFAULT_USE_SHARED_AVAHI_LIBS  ON )
 SET ( DEFAULT_USE_SYSTEM_FLATBUFFERS_LIBS OFF )
@@ -151,7 +152,8 @@ message(STATUS "ENABLE_USB_HID = ${ENABLE_USB_HID}")
 option(ENABLE_X11 "Enable the X11 grabber" ${DEFAULT_X11})
 message(STATUS "ENABLE_X11 = ${ENABLE_X11}")
 
-SET(ENABLE_QT5 ON)
+option(ENABLE_QT "Enable the qt grabber" ${DEFAULT_QT})
+message(STATUS "ENABLE_QT = ${ENABLE_QT}")
 
 option(ENABLE_TESTS "Compile additional test applications" ${DEFAULT_TESTS})
 message(STATUS "ENABLE_TESTS = ${ENABLE_TESTS}")
@@ -275,6 +277,8 @@ add_subdirectory(src)
 if (ENABLE_TESTS)
 	add_subdirectory(test)
 endif ()
+# Add /resources directory
+add_subdirectory(resources)
 
 # Add the doxygen generation directory
 add_subdirectory(doc)

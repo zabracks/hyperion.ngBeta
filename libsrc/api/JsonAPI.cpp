@@ -1496,7 +1496,7 @@ void JsonAPI::sendErrorReply(const QString &error, const QString &command, const
 
 void JsonAPI::streamLedcolorsUpdate(const std::vector<ColorRgb>& ledColors)
 {
-	if ( (_led_stream_timeout+50) < QDateTime::currentMSecsSinceEpoch() && _led_stream_mutex.tryLock(0) )
+	if ( (_led_stream_timeout+100) < QDateTime::currentMSecsSinceEpoch() && _led_stream_mutex.tryLock(0) )
 	{
 		_led_stream_timeout = QDateTime::currentMSecsSinceEpoch();
 		QJsonObject result;
@@ -1524,7 +1524,7 @@ void JsonAPI::streamLedcolorsUpdate(const std::vector<ColorRgb>& ledColors)
 
 void JsonAPI::setImage(const Image<ColorRgb> & image)
 {
-	if ( (_image_stream_timeout+50) < QDateTime::currentMSecsSinceEpoch() && _image_stream_mutex.tryLock(0) )
+	if ( (_image_stream_timeout+100) < QDateTime::currentMSecsSinceEpoch() && _image_stream_mutex.tryLock(0) )
 	{
 		_image_stream_timeout = QDateTime::currentMSecsSinceEpoch();
 
