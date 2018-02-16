@@ -41,5 +41,6 @@ fi
 if [[ $TRAVIS_OS_NAME == 'linux' ]]
 then
 	echo "Startup docker"
-	docker build -f ./.travis/Dockerfile.ubuntu -t ubuntu:16.04 --cache-from ubuntu:16.04 . || exit 3
+	ls -l
+	docker build -f ./.travis/Dockerfile.ubuntu -t ubuntu:16.04 --cache-from ubuntu:16.04 . #|| exit 3
 fi
