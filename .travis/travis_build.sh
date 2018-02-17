@@ -40,6 +40,6 @@ fi
 if [[ $TRAVIS_OS_NAME == 'linux' ]]
 then
 	echo "Startup docker"
-	ls -l
-	docker build -f ./.travis/Dockerfile.ubuntu -t ubuntu:16.04 --cache-from ubuntu:16.04 . || exit 3
+	docker pull hyperionorg/hyperion-ci:ubuntu1604
+	docker build -f ./.travis/Dockerfile.ubuntu -t hyperionorg/hyperion-ci:ubuntu1604 --cache-from hyperionorg/hyperion-ci:ubuntu1604 . || exit 3
 fi
