@@ -46,7 +46,7 @@ then
 		-v "${TRAVIS_BUILD_DIR}/deploy:/deploy" \
 		-v "${TRAVIS_BUILD_DIR}:/source:ro" \
 		hyperionorg/hyperion-ci:$DOCKER_TAG \
-		/bin/bash -c "mkdir build && cp -rv /source/. /build/ &&
+		/bin/bash -c "mkdir build && cp -rv /source/. /build &&
 		cd /build && mkdir build && cd build &&
 		cmake -DCMAKE_BUILD_TYPE=${BUILD_TYPE} .. &&
 		make -j $(nproc) ${PACKAGES} &&
