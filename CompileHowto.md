@@ -10,6 +10,7 @@ To compile Hyperion for Raspberry Pi
 wget -qN https://raw.github.com/brindosch/hyperion.ngBeta/docker/bin/scripts/docker-compile.sh && chmod +x *.sh && ./docker-compile.sh -t cross-qemu-rpistretch
 ```
 The compiled binaries and packages will be available at the deploy folder next to the script
+Note: call the script with `./docker-compile.sh -h` for more options
 
 # The usual way
 

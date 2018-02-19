@@ -32,6 +32,7 @@ fi
 if ! $DOCKER ps >/dev/null; then
 	echo "Error connecting to docker:"
 	$DOCKER ps
+	printHelp
 	exit 1
 fi
 set -e
@@ -52,7 +53,8 @@ echo "########################################################
 # docker-compile.sh -h	            # Show this help message
 # docker-compile.sh -t ubuntu1604	# The docker tag, one of ubuntu1604 | cross-qemu-rpistretch
 # docker-compile.sh -b Release      # cmake Release or Debug build
-# docker-compile.sh -p true         # If true build packages with CPack"
+# docker-compile.sh -p true         # If true build packages with CPack
+# More informations to docker tags at: https://hub.docker.com/r/hyperionorg/hyperion-ci/"
 }
 
 while getopts t:b:p:h option
