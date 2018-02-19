@@ -22,7 +22,7 @@ class AuthManager;
 class HyperionIManager;
 
 class JsonAPI : public QObject
-{
+
 	Q_OBJECT
 
 public:
