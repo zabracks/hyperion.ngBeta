@@ -23,7 +23,7 @@ echo "compile jobs: ${JOBS:=4}"
 [ -n "${TRAVIS_TAG:-}" ] && BUILD_TYPE=Release
 
 # Determine package creation; True for cron and tag builds
-[ "${TRAVIS_EVENT_TYPE:-}" == 'cron' || -n "${TRAVIS_TAG:-}" ] && PACKAGES=package
+[ "${TRAVIS_EVENT_TYPE:-}" == 'cron' ] || [ -n "${TRAVIS_TAG:-}" ] && PACKAGES=package
 
 # Determie -dev appends to platform;
 [ "${TRAVIS_EVENT_TYPE:-}" != 'cron' -a -z "${TRAVIS_TAG:-}" ] && PLATFORM=${PLATFORM}-dev
@@ -51,8 +51,8 @@ then
 		cmake -DCMAKE_BUILD_TYPE=${BUILD_TYPE} .. &&
 		make -j $(nproc) ${PACKAGES} &&
 		echo '---> Copy binaries and packages to host folder: ${TRAVIS_BUILD_DIR}/deploy' &&
-		cp -v /build/build/bin/h* /deploy/ &&
-		cp -v /build/build/Hyperion-* /deploy/ &&
+		cp -v /build/build/bin/h* /deploy/ 2>/dev/null || : &&
+		cp -v /build/build/Hyperion-* /deploy/ 2>/dev/null || : &&
 		exit 0;
 		exit 1 " || { echo "---> Hyperion compilation failed! Abort"; exit 2; }
 

@@ -67,7 +67,7 @@ do
 done
 
 # determine package creation
-if [ $BUILD_PACKAGES ]; then
+if [ $BUILD_PACKAGES == "true" ]; then
 	PACKAGES="package"
 fi
 
@@ -98,8 +98,8 @@ $DOCKER run --rm \
 	cmake -DCMAKE_BUILD_TYPE=${BUILD_TYPE} .. &&
 	make -j $(nproc) ${PACKAGES} &&
 	echo '---> Copy binaries and packages to host folder: ${SCRIPT_PATH}/deploy' &&
-	cp -v /build/build/bin/h* /deploy/ &&
-	cp -v /build/build/Hyperion-* /deploy/ &&
+	cp -v /build/build/bin/h* /deploy/ 2>/dev/null || : &&
+	cp -v /build/build/Hyperion-* /deploy/ 2>/dev/null || : &&
 	exit 0;
 	exit 1 " || { echo "---> Hyperion compilation failed! Abort"; exit 1; }
 
