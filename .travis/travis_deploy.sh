@@ -23,7 +23,7 @@ appendDate()
 	for F in $TRAVIS_BUILD_DIR/deploy/Hy*
 	do
 		echo "Append date to ${F}"
-		mv "$F" "${F%.*}-$D.${F##*.}" 2>/dev/null
+		mv "$F" "${F%.*}-$D.${F##*.}"
 	done
 }
 
@@ -33,7 +33,7 @@ appendName()
 	for F in $TRAVIS_BUILD_DIR/deploy/Hy*
 	do
 		echo "Append name to ${F}"
-		mv "$F" "${F%.*}-($DOCKER_NAME).${F##*.}" 2>/dev/null
+		mv "$F" "${F%.*}-($DOCKER_NAME).${F##*.}"
 	done
 }
 
