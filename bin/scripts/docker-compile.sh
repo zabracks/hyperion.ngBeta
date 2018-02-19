@@ -93,7 +93,7 @@ $DOCKER run --rm \
 	-v "${SCRIPT_PATH}/deploy:/deploy" \
 	-v "${SCRIPT_PATH}/hyperion:/source:ro" \
 	hyperionorg/hyperion-ci:$BUILD_TARGET \
-	/bin/bash -c "mkdir build && cp -r /source/* /build/ &&
+	/bin/bash -c "mkdir build && cp -r /source/. /build &&
 	cd /build && mkdir build && cd build &&
 	cmake -DCMAKE_BUILD_TYPE=${BUILD_TYPE} .. &&
 	make -j $(nproc) ${PACKAGES} &&

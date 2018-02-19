@@ -45,7 +45,6 @@ getFiles()
 }
 
 if [[ $TRAVIS_OS_NAME == 'linux' ]]; then
-	cd $TRAVIS_BUILD_DIR/build
 	if [[ -n $TRAVIS_TAG ]]; then
 		echo "tag upload"
 		appendName
