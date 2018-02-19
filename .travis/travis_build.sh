@@ -42,6 +42,9 @@ fi
 if [[ $TRAVIS_OS_NAME == 'linux' ]]
 then
 	echo "Compile Hyperion with DOCKER_TAG = ${DOCKER_TAG} and friendly name DOCKER_NAME = ${DOCKER_NAME}"
+	# take ownership of deploy dir
+	mkdir $TRAVIS_BUILD_DIR/deploy
+	# run docker
 	docker run --rm \
 		-v "${TRAVIS_BUILD_DIR}/deploy:/deploy" \
 		-v "${TRAVIS_BUILD_DIR}:/source:ro" \

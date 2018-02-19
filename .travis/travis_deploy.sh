@@ -22,7 +22,6 @@ appendDate()
 	D=$(date +%Y-%m-%d)
 	for F in $TRAVIS_BUILD_DIR/deploy/Hy*
 	do
-		echo "Append date to ${F}"
 		mv "$F" "${F%.*}-$D.${F##*.}"
 	done
 }
@@ -32,7 +31,6 @@ appendName()
 {
 	for F in $TRAVIS_BUILD_DIR/deploy/Hy*
 	do
-		echo "Append name to ${F}"
 		mv "$F" "${F%.*}-($DOCKER_NAME).${F##*.}"
 	done
 }
@@ -60,7 +58,7 @@ if [[ $TRAVIS_OS_NAME == 'linux' ]]; then
 		getFiles
 		sf_upload $FILES dev/alpha
 	else
-		echo "Direct pushed and PRs won't uploaded"
+		echo "Direct pushed and PRs won't be uploaded"
 		appendName
 		appendDate
 		getFiles
