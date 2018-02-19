@@ -5,6 +5,7 @@
 
 PLATFORM=x86
 BUILD_TYPE=Debug
+PACKAGES=""
 
 # Detect number of processor cores
 # default is 4 jobs
@@ -18,12 +19,13 @@ then
 fi
 echo "compile jobs: ${JOBS:=4}"
 
-# Compile hyperion for tags
+# Determine cmake build type; tag builds are Release, else Debug
 [ -n "${TRAVIS_TAG:-}" ] && BUILD_TYPE=Release
 
-# Compile hyperion for cron - take default settings
+# Determine package creation; True for cron and tag builds
+[ "${TRAVIS_EVENT_TYPE:-}" == 'cron' || -n "${TRAVIS_TAG:-}" ] && PACKAGES=package
 
-# Compile for PR (no tag and no cron)
+# Determie -dev appends to platform;
 [ "${TRAVIS_EVENT_TYPE:-}" != 'cron' -a -z "${TRAVIS_TAG:-}" ] && PLATFORM=${PLATFORM}-dev
 
 # Build the package on osx
@@ -39,7 +41,21 @@ fi
 # Build the package with docker
 if [[ $TRAVIS_OS_NAME == 'linux' ]]
 then
-	echo "Startup docker"
-	docker pull hyperionorg/hyperion-ci:ubuntu1604
-	docker build -f ./.travis/Dockerfile.ubuntu -t hyperionorg/hyperion-ci:ubuntu1604 --cache-from hyperionorg/hyperion-ci:ubuntu1604 . || exit 3
+	echo "Compile Hyperion with DOCKER_TAG = ${DOCKER_TAG} and friendly name DOCKER_NAME = ${DOCKER_NAME}"
+	docker run --rm \
+		-v "${TRAVIS_BUILD_DIR}/deploy:/deploy" \
+		-v "${TRAVIS_BUILD_DIR}:/source:ro" \
+		hyperionorg/hyperion-ci:$DOCKER_TAG \
+		/bin/bash -c "mkdir build && cp -r /source/* /build/ &&
+		cd /build && mkdir build && cd build &&
+		cmake -DCMAKE_BUILD_TYPE=${BUILD_TYPE} .. &&
+		make -j $(nproc) ${PACKAGES} &&
+		echo '---> Copy binaries and packages to host folder: ${TRAVIS_BUILD_DIR}/deploy' &&
+		cp -v /build/build/bin/h* /deploy/ &&
+		cp -v /build/build/Hyperion-* /deploy/ &&
+		exit 0;
+		exit 1 " || { echo "---> Hyperion compilation failed! Abort"; exit 2; }
+
+	# overwrite file owner to current user
+	sudo chown -fR $(stat -c "%U:%G" $TRAVIS_BUILD_DIR/deploy) $TRAVIS_BUILD_DIR/deploy
 fi
