@@ -5,7 +5,7 @@
 
 PLATFORM=x86
 BUILD_TYPE=Debug
-PACKAGES="package"
+PACKAGES=""
 
 # Detect number of processor cores
 # default is 4 jobs

@@ -50,7 +50,7 @@ echo "########################################################
 # These are possible arguments to modify the script behaviour with their default values
 #
 # docker-compile.sh -h	            # Show this help message
-# docker-compile.sh -t ubuntu1604	# The docker tag, one of ubuntu1604 | rpistretch
+# docker-compile.sh -t ubuntu1604	# The docker tag, one of ubuntu1604 | cross-qemu-rpistretch
 # docker-compile.sh -b Release      # cmake Release or Debug build
 # docker-compile.sh -p true         # If true build packages with CPack"
 }

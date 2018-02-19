@@ -58,11 +58,7 @@ if [[ $TRAVIS_OS_NAME == 'linux' ]]; then
 		getFiles
 		sf_upload $FILES dev/alpha
 	else
-		echo "Direct pushed and PRs won't be uploaded"
-		appendName
-		appendDate
-		getFiles
-		echo $FILES
+		echo "Direct pushed no upload, PRs not possible"
 		#sf_upload $FILES pr
 	fi
 fi
