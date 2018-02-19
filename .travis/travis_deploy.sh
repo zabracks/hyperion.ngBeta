@@ -22,7 +22,7 @@ appendDate()
 	D=$(date +%Y-%m-%d)
 	for F in $TRAVIS_BUILD_DIR/deploy/Hy*
 	do
-		mv "$F" "${F%.*}-$D.${F##*.}"
+		mv "$F" "${F%.*}-$D.${F##*.}" 2>/dev/null
 	done
 }
 
@@ -31,7 +31,7 @@ appendName()
 {
 	for F in $TRAVIS_BUILD_DIR/deploy/Hy*
 	do
-		mv "$F" "${F%.*}-($DOCKER_NAME).${F##*.}"
+		mv "$F" "${F%.*}-($DOCKER_NAME).${F##*.}" 2>/dev/null
 	done
 }
 

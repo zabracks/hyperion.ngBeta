@@ -5,7 +5,7 @@
 
 PLATFORM=x86
 BUILD_TYPE=Debug
-PACKAGES=""
+PACKAGES="package"
 
 # Detect number of processor cores
 # default is 4 jobs
@@ -46,7 +46,7 @@ then
 		-v "${TRAVIS_BUILD_DIR}/deploy:/deploy" \
 		-v "${TRAVIS_BUILD_DIR}:/source:ro" \
 		hyperionorg/hyperion-ci:$DOCKER_TAG \
-		/bin/bash -c "mkdir build && cp -r /source/* /build/ &&
+		/bin/bash -c "mkdir build && cp -r /source /build &&
 		cd /build && mkdir build && cd build &&
 		cmake -DCMAKE_BUILD_TYPE=${BUILD_TYPE} .. &&
 		make -j $(nproc) ${PACKAGES} &&
