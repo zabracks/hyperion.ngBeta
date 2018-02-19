@@ -1,4 +1,18 @@
-# Install the required tools and dependencies
+# With Docker
+If you are using [Docker](https://www.docker.com/), you can compile Hyperion inside a docker container. This keeps your system clean and with a simple script it's easy to use. Supported is also cross compilation for Raspberry Pi (Raspbian stretch)
+
+To compile Hyperion for Ubuntu 16.04 (x64) or higher just execute the following command
+```
+wget -qN https://raw.github.com/brindosch/hyperion.ngBeta/docker/bin/scripts/docker-compile.sh && chmod +x *.sh && ./docker-compile.sh
+```
+To compile Hyperion for Raspberry Pi
+```
+wget -qN https://raw.github.com/brindosch/hyperion.ngBeta/docker/bin/scripts/docker-compile.sh && chmod +x *.sh && ./docker-compile.sh -t cross-qemu-rpistretch
+```
+The compiled binaries and packages will be available at the deploy folder next to the script
+Note: call the script with `./docker-compile.sh -h` for more options
+
+# The usual way
 
 ## Debian/Ubuntu/Win10LinuxSubsystem
 
