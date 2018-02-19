@@ -17,8 +17,8 @@ matrix:
     - os: linux
       dist: trusty
       env:
-          - DOCKER_TAG=cross-quemu-rpistretch
-          - DOCKER_NAME="Raspbian Stretch"
+          - DOCKER_TAG=cross-qemu-rpistretch
+          - DOCKER_NAME="Raspberry Pi"
     - os: osx
       osx_image: xcode7.3
       env:

@@ -51,13 +51,13 @@ then
 		hyperionorg/hyperion-ci:$DOCKER_TAG \
 		/bin/bash -c "mkdir build && cp -r /source/. /build &&
 		cd /build && mkdir build && cd build &&
-		cmake -DCMAKE_BUILD_TYPE=${BUILD_TYPE} .. &&
-		make -j $(nproc) ${PACKAGES} &&
+		cmake -DCMAKE_BUILD_TYPE=${BUILD_TYPE} .. || exit 2 &&
+		make -j $(nproc) ${PACKAGES} || exit 3 &&
 		echo '---> Copy binaries and packages to host folder: ${TRAVIS_BUILD_DIR}/deploy' &&
 		cp -v /build/build/bin/h* /deploy/ 2>/dev/null || : &&
 		cp -v /build/build/Hyperion-* /deploy/ 2>/dev/null || : &&
 		exit 0;
-		exit 1 " || { echo "---> Hyperion compilation failed! Abort"; exit 2; }
+		exit 1 " || { echo "---> Hyperion compilation failed! Abort"; exit 4; }
 
 	# overwrite file owner to current user
 	sudo chown -fR $(stat -c "%U:%G" $TRAVIS_BUILD_DIR/deploy) $TRAVIS_BUILD_DIR/deploy
