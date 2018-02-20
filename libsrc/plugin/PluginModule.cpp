@@ -11,6 +11,9 @@
 #include <QJsonArray>
 #include <QDateTime>
 
+// other
+#include <cstdlib>
+
 // Get the plugin from the capsule
 #define getPlugin() static_cast<Plugin*>((Plugin*)PyCapsule_Import("plugin.__pluginObj", 0))
 

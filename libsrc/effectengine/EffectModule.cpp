@@ -11,6 +11,9 @@
 #include <QDateTime>
 #include <QImageReader>
 
+// other
+#include <cstdlib>
+
 // create the hyperion module
 struct PyModuleDef EffectModule::moduleDef = {
 	PyModuleDef_HEAD_INIT,
