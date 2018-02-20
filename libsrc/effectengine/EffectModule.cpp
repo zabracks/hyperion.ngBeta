@@ -12,7 +12,7 @@
 #include <QImageReader>
 
 // other
-#include <cstdlib>
+#include <cmath>
 
 // create the hyperion module
 struct PyModuleDef EffectModule::moduleDef = {
@@ -47,18 +47,17 @@ PyObject *EffectModule::json2python(const QJsonValue &jsonData)
 			return Py_BuildValue("");
 		case QJsonValue::Double:
 		{
-			auto v = jsonData.toDouble();
+		/*	auto v = jsonData.toDouble();
 			constexpr auto eps = std::numeric_limits<double>::epsilon();
 			if (std::abs(int(v) - v) < eps) {
 				return Py_BuildValue("i", jsonData.toInt());
 			}
 			return Py_BuildValue("d", jsonData.toDouble());
-		/*	if (std::rint(jsonData.toDouble()) != jsonData.toDouble())
+		*/	if (std::round(jsonData.toDouble()) != jsonData.toDouble())
 			{
 				return Py_BuildValue("d", jsonData.toDouble());
 			}
 			return Py_BuildValue("i", jsonData.toInt());
-		*/
 		}
 		case QJsonValue::Bool:
 			return Py_BuildValue("i", jsonData.toBool() ? 1 : 0);

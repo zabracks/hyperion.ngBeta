@@ -12,7 +12,7 @@
 #include <QDateTime>
 
 // other
-#include <cstdlib>
+#include <cmath>
 
 // Get the plugin from the capsule
 #define getPlugin() static_cast<Plugin*>((Plugin*)PyCapsule_Import("plugin.__pluginObj", 0))
@@ -101,18 +101,18 @@ PyObject *PluginModule::json2python(const QJsonValue &jsonData)
 			Py_RETURN_NOTIMPLEMENTED;
 		case QJsonValue::Double:
 		{
-			auto v = jsonData.toDouble();
+		/*	auto v = jsonData.toDouble();
 			constexpr auto eps = std::numeric_limits<double>::epsilon();
 			if (std::abs(int(v) - v) < eps) {
 				return Py_BuildValue("i", jsonData.toInt());
 			}
 			return Py_BuildValue("d", jsonData.toDouble());
-		/*	if (std::rint(jsonData.toDouble()) != jsonData.toDouble())
+		*/	if (std::round(jsonData.toDouble()) != jsonData.toDouble())
 			{
 				return Py_BuildValue("d", jsonData.toDouble());
 			}
 			return Py_BuildValue("i", jsonData.toInt());
-		*/}
+		}
 		case QJsonValue::Bool:
 			return Py_BuildValue("i", jsonData.toBool() ? 1 : 0);
 		case QJsonValue::String:
