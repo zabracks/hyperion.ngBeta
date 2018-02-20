@@ -101,7 +101,7 @@ const QString SSDPDiscover::getFirstService(const searchType& type, const QStrin
 				}
 				else
 				{
-					Info(_log, "Found Hyperion server at: %s:%d", QSTRING_CSTR(url.host()), fbsport);
+					Info(_log, "Found Hyperion server at: %s:%s", QSTRING_CSTR(url.host()), QSTRING_CSTR(fbsport));
 					return url.host()+":"+fbsport;
 				}
 			}

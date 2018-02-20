@@ -47,13 +47,7 @@ PyObject *EffectModule::json2python(const QJsonValue &jsonData)
 			return Py_BuildValue("");
 		case QJsonValue::Double:
 		{
-		/*	auto v = jsonData.toDouble();
-			constexpr auto eps = std::numeric_limits<double>::epsilon();
-			if (std::abs(int(v) - v) < eps) {
-				return Py_BuildValue("i", jsonData.toInt());
-			}
-			return Py_BuildValue("d", jsonData.toDouble());
-		*/	if (std::round(jsonData.toDouble()) != jsonData.toDouble())
+			if (std::round(jsonData.toDouble()) != jsonData.toDouble())
 			{
 				return Py_BuildValue("d", jsonData.toDouble());
 			}
