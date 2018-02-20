@@ -98,12 +98,18 @@ PyObject *PluginModule::json2python(const QJsonValue &jsonData)
 			Py_RETURN_NOTIMPLEMENTED;
 		case QJsonValue::Double:
 		{
-			if (std::rint(jsonData.toDouble()) != jsonData.toDouble())
+			auto v = jsonData.toDouble();
+			constexpr auto eps = std::numeric_limits<double>::epsilon();
+			if (std::abs(int(v) - v) < eps) {
+				return Py_BuildValue("i", jsonData.toInt());
+			}
+			return Py_BuildValue("d", jsonData.toDouble());
+		/*	if (std::rint(jsonData.toDouble()) != jsonData.toDouble())
 			{
 				return Py_BuildValue("d", jsonData.toDouble());
 			}
 			return Py_BuildValue("i", jsonData.toInt());
-		}
+		*/}
 		case QJsonValue::Bool:
 			return Py_BuildValue("i", jsonData.toBool() ? 1 : 0);
 		case QJsonValue::String:
