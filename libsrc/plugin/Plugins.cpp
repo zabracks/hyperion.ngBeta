@@ -7,6 +7,7 @@
 
 // qt
 #include <QThread>
+#include <QTimer>
 
 // cb thread
 #include "CallbackThread.h"
@@ -55,13 +56,14 @@ Plugins::Plugins(Hyperion* hyperion, const quint8& instance)
 Plugins::~Plugins()
 {
 	_pluginFilesHandler->registerMe(this);
-	foreach (Plugin* plug, _runningPlugins)
+	QMap<QString,Plugin*> copy = _runningPlugins;
+	foreach (Plugin* plug, copy)
 	{
 		QThread* thread = plug->thread();
 		plug->requestInterruption();
 		// block until thread exit, if timeout is reached force the quit
-		if(!thread->wait(5000))
-			plug->forceExit();
+		// thread->wait(5000);
+		//	plug->forceExit();
 	}
 }
 
@@ -79,18 +81,19 @@ void Plugins::pluginFinished()
 {
 	Plugin* plugin = qobject_cast<Plugin*>(sender());
 	const QString id = plugin->getId();
+	const PluginDefinition def = plugin->getDef();
 	bool err = plugin->hasError();
 
 	// notify error or stop
 	if(err)
 	{
 		emit pluginAction(P_ERROR, id);
-		Error(_log, "Plugin with id '%s' crashed",QSTRING_CSTR(id));
+		Error(_log, "Plugin '%s' crashed",QSTRING_CSTR(def.name));
 	}
 	else
 	{
 		emit pluginAction(P_STOPPED, id);
-		Info(_log, "Plugin with id '%s' stopped",QSTRING_CSTR(id));
+		Info(_log, "Plugin '%s' stopped",QSTRING_CSTR(def.name));
 	}
 
 	// delete pointer and remove from list
@@ -238,7 +241,7 @@ void Plugins::start(QString id)
 
 	connect( thread, &QThread::finished, callbackThread, &QObject::deleteLater );
 	connect( thread, &QThread::finished, thread, &QObject::deleteLater );
-	// make sure the callback thread + callback instance quits with the plugin thread + plugin instance, DirectConnection required, as we wan't a fast quit (see Plugins destructor)
+	// make sure the callback thread + callback instance quits with the plugin thread + plugin instance
 	connect( newPlugin, &Plugin::finished, thread, &QThread::quit, Qt::DirectConnection);
 
 	// feed callback with signals
@@ -272,8 +275,18 @@ bool Plugins::stop(const QString& id, const bool& blocking) const
 		Plugin* plugin = _runningPlugins.value(id);
 		QThread* pluginThread = plugin->thread();
 
+		// catch repeated calls to prevent killTimer multiple triggers
+		if(plugin->isInterruptionRequested())
+			return true;
+
 		plugin->requestInterruption();
 
+	/*	// setup a killTimer
+		QTimer::singleShot(5000, [=](){
+			if(isPluginRunning(id))
+				plugin->forceExit();
+		});
+	*/
 		if(blocking)
 		{
 			// blocking stop is usually a remove request, so clean the queue just in case

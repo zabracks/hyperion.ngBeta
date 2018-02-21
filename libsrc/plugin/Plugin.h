@@ -52,8 +52,13 @@ public:
 
 	/// get plugin id
 	const QString getId(){ return _id; };
+
+	/// get plugin def
+	const PluginDefinition getDef(){ return _def; };
+
 	/// is true when a error occurred
 	bool hasError() const { return _error; };
+
 private:
 	PyThreadState* _state;
 	/// The plugins instance

@@ -39,8 +39,8 @@ void Plugin::requestInterruption()
 
 void Plugin::forceExit()
 {
-	Warning(_log, "Plugin with id '%s' didn't stopped the execution within 5 seconds, the stop will be forced now", QSTRING_CSTR(_id));
-	exit();
+	Warning(_log, "Plugin '%s' didn't stopped within 5 seconds, force now!", QSTRING_CSTR(_def.name));
+	//emit finished();
 }
 
 void Plugin::exit()

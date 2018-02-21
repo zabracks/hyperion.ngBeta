@@ -257,12 +257,6 @@ public:
 	const int & getLedMappingType();
 
 	///
-	/// @brief Get the root path for all hyperion user data files
-	/// @return Root path for all hyperion user data files
-	///
-	const QString &getRootPath() { return _rootPath; };
-
-	///
 	/// @brief Get the current latchtime of the ledDevice
 	/// @return latchtime in ms
 	///
@@ -270,7 +264,7 @@ public:
 
 	///
 	/// @brief forward smoothing config
-	/// 
+	///
 	unsigned addSmoothingConfig(int settlingTime_ms, double ledUpdateFrequency_hz=25.0, unsigned updateDelay=0);
 
 	const VideoMode & getCurrentVideoMode();
@@ -512,9 +506,8 @@ private:
 	///
 	/// @brief Constructs the Hyperion instance, just accessible for HyperionIManager
 	/// @param  instance  The instance index
-	/// @param  rootPath  The rootPath of user data
 	///
-	Hyperion(const quint8& instance, const QString& rootPath);
+	Hyperion(const quint8& instance);
 
 	/// instance index
 	const quint8 _instIndex;
@@ -553,9 +546,6 @@ private:
 
 	/// plugins instance
 	Plugins * _plugins;
-
-	/// root path for all hyperion user data files
-	QString _rootPath;
 
 	/// Logger instance
 	Logger * _log;

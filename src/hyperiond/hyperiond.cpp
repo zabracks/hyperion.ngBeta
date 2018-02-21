@@ -174,7 +174,7 @@ void HyperionDaemon::freeObjects()
 	_webserver->thread()->wait(1000);
 	delete _udpListener;
 
-	// stop Hyperion (blocking operation)
+	// stop Hyperions (non blocking)
 	_instanceManager->stopAll();
 
 	delete _bonjourBrowserWrapper;
@@ -395,7 +395,7 @@ void HyperionDaemon::handleSettingsUpdate(const settings::type& type, const QJso
 			#ifdef ENABLE_V4L2
 
 			const QJsonObject & grabberConfig = v4lArray.at(idx).toObject();
-			
+
 			V4L2Wrapper* grabber = new V4L2Wrapper(
 				grabberConfig["device"].toString("auto"),
 				parseVideoStandard(grabberConfig["standard"].toString("no-change")),

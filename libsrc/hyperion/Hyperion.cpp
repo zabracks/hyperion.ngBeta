@@ -42,7 +42,7 @@
 #include <boblightserver/BoblightServer.h>
 
 // TODO move constructor to start() where it makes sense (eg class inits)
-Hyperion::Hyperion(const quint8& instance, const QString& rootPath)
+Hyperion::Hyperion(const quint8& instance)
 	: QObject()
 	, _instIndex(instance)
 	, _settingsManager(new SettingsManager(instance, this))
@@ -55,7 +55,6 @@ Hyperion::Hyperion(const quint8& instance, const QString& rootPath)
 	, _effectEngine(nullptr)
 	, _plugins(nullptr)
 //	, _messageForwarder(new MessageForwarder(this, getSetting(settings::NETFORWARD)))
-	, _rootPath(rootPath)
 	, _log(Logger::getInstance("HYPERION"))
 	, _hwLedCount()
 	, _ledGridSize(hyperion::getLedLayoutGridSize(getSetting(settings::LEDS).array()))
@@ -155,6 +154,7 @@ void Hyperion::stop()
 
 void Hyperion::freeObjects(bool emitCloseSignal)
 {
+	delete _plugins;
 	// switch off all leds
 	clearall(true);
 
@@ -166,7 +166,6 @@ void Hyperion::freeObjects(bool emitCloseSignal)
 	// delete components on exit of hyperion core
 	delete _boblightServer;
 	delete _captureCont;
-	delete _plugins;
 	delete _effectEngine;
 	//delete _deviceSmooth;
 	delete _raw2ledAdjustment;

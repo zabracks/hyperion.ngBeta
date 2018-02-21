@@ -148,17 +148,12 @@ private:
 	HyperionIManager(const QString& rootPath, QObject* parent = nullptr);
 
 	///
-	/// @brief desctructor will stop all instances in a blocking operation
-	///
-	~HyperionIManager();
-
-	///
 	/// @brief Start all instances that are marked as enabled in db. Non blocking
 	///
 	void startAll();
 
 	///
-	/// @brief Stop all instances while blocking, used from desctructor
+	/// @brief Stop all instances, used from hyperiond
 	///
 	void stopAll();
 

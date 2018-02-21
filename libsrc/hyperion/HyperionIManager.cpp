@@ -19,11 +19,6 @@ HyperionIManager::HyperionIManager(const QString& rootPath, QObject* parent)
 	qRegisterMetaType<instanceState>("instanceState");
 }
 
-HyperionIManager::~HyperionIManager()
-{
-
-}
-
 Hyperion* HyperionIManager::getHyperionInstance(const quint8& instance)
 {
 	if(_runningInstances.contains(instance))
@@ -54,10 +49,13 @@ void HyperionIManager::startAll()
 
 void HyperionIManager::stopAll()
 {
-	for(const auto instance : _runningInstances)
+	// copy the instances due to loop corruption, even with .erase() return next iter
+	QMap<quint8, Hyperion*> instCopy = _runningInstances;
+	for(const auto instance : instCopy)
 	{
 		instance->stop();
-		instance->thread()->quit();
+		// creates probably more harm than required especially with Plugins
+		//instance->thread()->wait(5000);
 	}
 }
 
@@ -68,7 +66,7 @@ const bool HyperionIManager::startInstance(const quint8& inst, const bool& block
 		if(!_runningInstances.contains(inst) && !_startQueue.contains(inst))
 		{
 			QThread* hyperionThread = new QThread();
-			Hyperion* hyperion = new Hyperion(inst, _rootPath);
+			Hyperion* hyperion = new Hyperion(inst);
 			hyperion->moveToThread(hyperionThread);
 			// setup thread management
 			connect(hyperionThread, &QThread::started, hyperion, &Hyperion::start);
@@ -193,6 +191,7 @@ void HyperionIManager::handleFinished()
 	hyperion->deleteLater();
 	emit instanceStateChanged(H_STOPPED, instance);
 	emit change();
+
 }
 
 void HyperionIManager::handleStarted()

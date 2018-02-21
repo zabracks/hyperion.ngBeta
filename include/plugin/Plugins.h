@@ -55,6 +55,16 @@ signals:
 	void pluginAction(PluginAction action, QString id, bool success = true, PluginDefinition def = PluginDefinition());
 
 private:
+	/// start or restart a plugin
+	void start(QString id);
+
+	///
+	/// @brief Save settings for given plugin id in db, assigned with Hyperion instance
+	/// @param  id        The plugin id
+	/// @param  settings  The settings for this plugin
+	///
+	void saveSettings(const QString& id, const QJsonObject& settings);
+
 	/// Logger instance
 	Logger* _log;
 	/// Hyperion instance
@@ -72,16 +82,6 @@ private:
 	// instance specific copy of PluginFilesHandler with injected settings
 	QMap<QString, PluginDefinition> _installedPlugins;
 
-	/// start or restart a plugin
-	void start(QString id);
-
-	///
-	/// @brief Save settings for given plugin id in db, assigned with Hyperion instance
-	/// @param  id        The plugin id
-	/// @param  settings  The settings for this plugin
-	///
-	void saveSettings(const QString& id, const QJsonObject& settings);
-
 	QMap<QString,Plugin*> _runningPlugins;
 
 	QStringList _restartQueue;
@@ -91,7 +91,6 @@ public slots:
 	void doPluginAction(PluginAction action, QString id, bool success = true, PluginDefinition def = PluginDefinition());
 
 private slots:
-
 	/// is called when a plugin thread exits
 	void pluginFinished();
 };
