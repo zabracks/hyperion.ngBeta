@@ -1,0 +1,12 @@
+// This is not really a NSIS part, but adds a .exe icon by including this file to binary sources
+// https://cgit.kde.org/trojita.git/tree/src/trojita_win32.rc
+// https://stackoverflow.com/questions/29146172/setting-the-application-icon-with-cmake
+// windows cpack cmake nsis: https://stackoverflow.com/questions/2640760/creating-windows-desktop-icon-in-cmake-cpack-nsis
+#ifndef IDI_ICON1
+#define IDI_ICON1 1
+#endif
+
+#define EXE "hyperiond.exe"
+#define ICO "hyperion.ico"
+
+IDI_ICON1	ICON	DISCARDABLE	ICO
