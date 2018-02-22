@@ -74,24 +74,16 @@ sudo make install/strip
 sudo make uninstall
 # ... or run it from compile directory
 bin/hyperiond
-# webui is located on localhost:8099
+# webui is located on localhost:8090 or 8091
 ```
 
 
 ### Download
- Create hyperion directory and checkout the code from github
-
-You might want to add `--depth 1` to the `git` command if you only want to compile the current source and have no need for the entire git repository
+ Creates hyperion directory and checkout the code from github
 
 ```
 export HYPERION_DIR="hyperion"
-git clone --recursive https://github.com/hyperion-project/hyperion.ng.git "$HYPERION_DIR"
-```
-
-**Note:** If you forget the --recursive in above statement or you are updating an existing clone you need to clone the protobuf submodule by runnning the follwing two statements:
-```
-git submodule init
-git submodule update
+git clone --recursive --depth 1 https://github.com/hyperion-project/hyperion.ng.git "$HYPERION_DIR"
 ```
 
 ### Preparations
@@ -113,7 +105,7 @@ cmake -DCMAKE_BUILD_TYPE=Release ..
 
 *Developers on x86* linux should use:
 ```
-cmake -DPLATFORM=x86-dev -DCMAKE_BUILD_TYPE=Release ..
+cmake -DPLATFORM=x11-dev -DCMAKE_BUILD_TYPE=Release ..
 ```
 
 To use framebuffer instead of dispmanx (for example on the *cubox-i*):
