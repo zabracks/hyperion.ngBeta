@@ -46,3 +46,5 @@ echo "---> Delete Hyperion desktop icons"
 desktop-file-edit --set-key=NoDisplay --set-value=true /usr/share/applications/hyperiond.desktop 2>/dev/null
 rm -v /usr/share/applications/hyperion* 2>/dev/null
 rm -rv /usr/share/pixmaps/hyperion 2>/dev/null
+
+exit 0

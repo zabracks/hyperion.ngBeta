@@ -30,6 +30,7 @@ fi
 # In case we don't use a service kill all instances
 killall hyperiond 2> /dev/null
 
+exit 0
 
 #$USR=hyperionIS;
 

@@ -10,7 +10,7 @@
 #   RPM_BUILDER_VERSION
 #       A string denoting the version of rpm that has been found
 
-find_program ( RPM_BUILDER_EXECUTABLE rpm PATHS /usr/bin )
+find_program ( RPM_BUILDER_EXECUTABLE rpm )
 
 if ( RPM_BUILDER_EXECUTABLE )
   SET( RPM_BUILDER_FOUND TRUE )

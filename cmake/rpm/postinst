@@ -143,3 +143,5 @@ then
 	echo "- please remove it to avoid problems                                            -"
 	echo "---------------------------------------------------------------------------------"
 fi
+
+exit 0

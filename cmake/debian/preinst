@@ -31,7 +31,7 @@ fi
 killall hyperiond 2> /dev/null
 
 # overwrite last return code
-return 0
+exit 0
 
 #$USR=hyperionIS;
 

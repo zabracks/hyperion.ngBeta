@@ -47,4 +47,4 @@ desktop-file-edit --set-key=NoDisplay --set-value=true /usr/share/applications/h
 rm -v /usr/share/applications/hyperion* 2>/dev/null
 rm -rv /usr/share/pixmaps/hyperion 2>/dev/null
 
-return 0
+exit 0
