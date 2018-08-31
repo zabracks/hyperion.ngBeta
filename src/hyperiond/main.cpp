@@ -122,7 +122,7 @@ int main(int argc, char** argv)
 	if (parser.isSet(versionOption))
 	{
 	std::cout
-		<< "Hyperion Ambilight Deamon (" << getpid() << ")" << std::endl
+		<< "Hyperion Ambilight Daemon (" << getpid() << ")" << std::endl
 		<< "\tVersion   : " << HYPERION_VERSION << " (" << HYPERION_BUILD_ID << ")" << std::endl
 		<< "\tBuild Time: " << __DATE__ << " " << __TIME__ << std::endl;
 
